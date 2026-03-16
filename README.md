@@ -11,8 +11,8 @@
 |---|---|
 | **Target Audience** | CEX compliance teams, crypto risk officers, regulators |
 | **Track Alignment** | CEX Security & Resilience · AI + Stablecoins + Web3 · RWA Unified Settlement |
-| **AWS Account** | `__AWS_ACCOUNT_ID__` |
-| **Snowflake Account** | `<YOUR_CONNECTION>` |
+| **AWS Account** | `<AWS_ACCOUNT_ID>` |
+| **Snowflake Account** | `<SF_CONNECTION>` |
 | **AWS Region** | `us-west-2` (primary) |
 
 ---
@@ -111,9 +111,9 @@ aws-fraud-detection-fintech/
 ## Quick Start (Demo Environment)
 
 ### Prerequisites
-- AWS CLI configured for account `__AWS_ACCOUNT_ID__`, region `us-west-2`
+- AWS CLI configured for account `<AWS_ACCOUNT_ID>`, region `us-west-2`
 - Terraform >= 1.5
-- SnowSQL connected to `<YOUR_CONNECTION>` (`snowsql -c <YOUR_CONNECTION>`)
+- SnowSQL connected to `<SF_CONNECTION>` (`snowsql -c <SF_CONNECTION>`)
 - Python 3.10+
 
 ### 1. Provision AWS Infrastructure
@@ -126,19 +126,19 @@ terraform apply -var-file="demo.tfvars" -auto-approve
 
 ### 2. Build Snowflake Platform (one command)
 ```bash
-snowsql -c <YOUR_CONNECTION> -f snowflake/demo_build_all.sql
+snowsql -c <SF_CONNECTION> -f snowflake/demo_build_all.sql
 ```
 
 ### 3. Load Data + Activate Pipeline
 
 **Quick reset** (<60 seconds, 5K trades):
 ```bash
-SNOWFLAKE_CONNECTION_NAME=<YOUR_CONNECTION> python scripts/generate_synthetic_data.py --quick
+SNOWFLAKE_CONNECTION_NAME=<SF_CONNECTION> python scripts/generate_synthetic_data.py --quick
 ```
 
 **Full dataset** (~3 min, 50K trades):
 ```bash
-SNOWFLAKE_CONNECTION_NAME=<YOUR_CONNECTION> python scripts/generate_synthetic_data.py \
+SNOWFLAKE_CONNECTION_NAME=<SF_CONNECTION> python scripts/generate_synthetic_data.py \
     --scenario all --trades 50000 --seed-and-refresh
 ```
 
