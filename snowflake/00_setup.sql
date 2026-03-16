@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Phase 1: Snowflake Foundations
 -- File: 00_setup.sql
--- Account: demo43  |  AWS Account: 018437500440  |  Region: us-west-2
+-- Account: <SF_CONNECTION>  |  AWS Account: <AWS_ACCOUNT_ID>  |  Region: us-west-2
 -- Run as: ACCOUNTADMIN or SYSADMIN with USERADMIN grant
 -- =============================================================================
 

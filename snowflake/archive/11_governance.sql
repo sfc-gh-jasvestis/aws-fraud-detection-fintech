@@ -119,11 +119,11 @@ COMMENT ON TABLE CRYPTO_SURVEILLANCE.ANALYTICS.CASES IS
 -- ALTER TABLE CRYPTO_SURVEILLANCE.HARMONISED.ENTITY SET ENABLE_SCHEMA_EVOLUTION = TRUE;
 -- CALL SYSTEM$CLASSIFY('CRYPTO_SURVEILLANCE.HARMONISED.ENTITY', {'auto_tag': true});
 -- CALL SYSTEM$CLASSIFY('CRYPTO_SURVEILLANCE.ANALYTICS.CASES',   {'auto_tag': true});
--- (Uncomment above if Governance tier available on demo43)
+-- (Uncomment above if Governance tier available on <SF_CONNECTION>)
 
 -- ─── Snowgrid / Cross-Region Replication (optional resilience) ────────────────
 -- For production, enable Snowgrid replication to a secondary region:
--- ALTER DATABASE CRYPTO_SURVEILLANCE ENABLE REPLICATION TO ACCOUNTS aws_us_west_2.demo43_dr;
+-- ALTER DATABASE CRYPTO_SURVEILLANCE ENABLE REPLICATION TO ACCOUNTS aws_us_west_2.<SF_CONNECTION>_dr;
 
 -- ─── Audit Logging ────────────────────────────────────────────────────────────
 -- Access history is available via:

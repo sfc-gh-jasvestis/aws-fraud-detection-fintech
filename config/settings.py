@@ -95,7 +95,7 @@ class DataSourceConfig:
 
 @dataclass
 class SnowflakeConfig:
-    account:   str = field(default_factory=lambda: _env("SURV_SF_ACCOUNT",   "demo43"))
+    account:   str = field(default_factory=lambda: _env("SURV_SF_ACCOUNT",   "<SF_CONNECTION>"))
     user:      str = field(default_factory=lambda: _env("SURV_SF_USER",      "SURVEILLANCE_ADMIN_SVC"))
     role:      str = field(default_factory=lambda: _env("SURV_SF_ROLE",      "SURVEILLANCE_ADMIN"))
     warehouse: str = field(default_factory=lambda: _env("SURV_SF_WAREHOUSE", "WH_SURVEILLANCE"))
@@ -120,7 +120,7 @@ class SnowflakeConfig:
 @dataclass
 class AWSConfig:
     region:      str = field(default_factory=lambda: _env("AWS_DEFAULT_REGION", "us-west-2"))
-    account_id:  str = field(default_factory=lambda: _env("AWS_ACCOUNT_ID",     "018437500440"))
+    account_id:  str = field(default_factory=lambda: _env("AWS_ACCOUNT_ID",     "<AWS_ACCOUNT_ID>"))
     stream_prefix: str = field(
         default_factory=lambda: _env("SURV_KINESIS_STREAM_PREFIX", "crypto-surveillance")
     )

@@ -2,10 +2,10 @@
 -- Demo Build Orchestrator
 -- File: snowflake/demo_build_all.sql
 -- Purpose: Single script to build the entire CRYPTO_SURVEILLANCE platform.
--- Run as: ACCOUNTADMIN on demo43
+-- Run as: ACCOUNTADMIN on <SF_CONNECTION>
 --
 -- Usage:
---   snowsql -c demo43 -f snowflake/demo_build_all.sql
+--   snowsql -c <SF_CONNECTION> -f snowflake/demo_build_all.sql
 --
 -- This executes scripts 00-08 in order. Each script is idempotent.
 -- Pipes (03_pipes.sql) are intentionally excluded from demo builds.

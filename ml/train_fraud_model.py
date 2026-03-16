@@ -33,7 +33,7 @@ from snowflake.ml.registry import Registry
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-SNOWFLAKE_ACCOUNT = os.environ.get("SNOWFLAKE_ACCOUNT", "demo43")
+SNOWFLAKE_ACCOUNT = os.environ.get("SNOWFLAKE_ACCOUNT", "<SF_CONNECTION>")
 SNOWFLAKE_USER    = os.environ.get("SNOWFLAKE_USER",    "SURVEILLANCE_ML_SVC")
 SNOWFLAKE_ROLE    = "SURVEILLANCE_ML"
 SNOWFLAKE_WH      = "WH_ML"

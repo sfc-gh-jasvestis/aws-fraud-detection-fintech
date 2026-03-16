@@ -14,7 +14,7 @@ Usage:
   python streaming_ingest.py --stream cex-trades --mode live --shard-count 2
 
 Configuration via environment variables or ~/.snowflake/config (SnowSQL format):
-  SNOWFLAKE_ACCOUNT      : demo43 (or full account identifier)
+  SNOWFLAKE_ACCOUNT      : <SF_CONNECTION> (or full account identifier)
   SNOWFLAKE_USER         : SNOWPIPE_STREAMING_SVC
   SNOWFLAKE_PRIVATE_KEY  : Path to RSA private key file (PEM)
   SNOWFLAKE_DATABASE     : CRYPTO_SURVEILLANCE
@@ -223,7 +223,7 @@ class SnowflakeStreamingWriter:
         if not self.table_name:
             raise ValueError(f"Unknown stream: {stream_name}")
 
-        account  = os.environ.get("SNOWFLAKE_ACCOUNT", "demo43")
+        account  = os.environ.get("SNOWFLAKE_ACCOUNT", "<SF_CONNECTION>")
         user     = os.environ.get("SNOWFLAKE_USER",    "SNOWPIPE_STREAMING_SVC")
         key_path = os.environ.get("SNOWFLAKE_PRIVATE_KEY", "~/.snowflake/rsa_key.p8")
 

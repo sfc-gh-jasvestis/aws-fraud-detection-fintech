@@ -149,5 +149,5 @@ End-to-end platform for CEX market abuse detection and AML investigation. Serves
 2. Detection in minutes, not days: Dynamic Tables + streaming pipeline  
 3. Regulator-ready: full lineage, PII masking, SAR narrative generation  
 
-**Booth contact**: jasvestis@snowflake.com  
-**Snowflake account demo**: demo43
+**Booth contact**: <YOUR_EMAIL>  
+**Snowflake account demo**: <SF_CONNECTION>

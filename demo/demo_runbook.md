@@ -1,7 +1,7 @@
 # Demo Runbook — Digital Asset Market Surveillance
 ## 5–7 Minute Booth Demo Script
 **Event**: Track 2 | CEX Security · Web3 · RWA Infrastructure  
-**Account**: demo43 (Snowflake) | `018437500440` (AWS)  
+**Account**: <SF_CONNECTION> (Snowflake) | `<AWS_ACCOUNT_ID>` (AWS)  
 **Region**: us-west-2  
 **Pre-loaded scenario**: `all` (50,000 synthetic events, 5 active alert types)
 
@@ -47,7 +47,7 @@ Both personas read from the **same governed Snowflake views** — different tool
 
 **Build all at once:**
 ```bash
-snowsql -c demo43 -f snowflake/demo_build_all.sql
+snowsql -c <SF_CONNECTION> -f snowflake/demo_build_all.sql
 ```
 
 ---
@@ -56,17 +56,17 @@ snowsql -c demo43 -f snowflake/demo_build_all.sql
 
 ### 1. Build the platform
 ```bash
-snowsql -c demo43 -f snowflake/demo_build_all.sql
+snowsql -c <SF_CONNECTION> -f snowflake/demo_build_all.sql
 ```
 
 ### 2. Load synthetic data + auto-refresh
 ```bash
 # Full dataset (50K trades, ~3 min):
-SNOWFLAKE_CONNECTION_NAME=demo43 python scripts/generate_synthetic_data.py \
+SNOWFLAKE_CONNECTION_NAME=<SF_CONNECTION> python scripts/generate_synthetic_data.py \
     --scenario all --trades 50000 --seed-and-refresh
 
 # Quick reset (<60s):
-SNOWFLAKE_CONNECTION_NAME=demo43 python scripts/generate_synthetic_data.py --quick
+SNOWFLAKE_CONNECTION_NAME=<SF_CONNECTION> python scripts/generate_synthetic_data.py --quick
 ```
 
 The `--seed-and-refresh` flag automatically:
@@ -235,7 +235,7 @@ LIMIT 5;
 ## Rapid Demo Reset (between booth visitors)
 
 ```bash
-SNOWFLAKE_CONNECTION_NAME=demo43 python scripts/generate_synthetic_data.py --quick
+SNOWFLAKE_CONNECTION_NAME=<SF_CONNECTION> python scripts/generate_synthetic_data.py --quick
 ```
 
 This loads 5,000 trades in <60 seconds, refreshes all DTs, runs detection, and creates cases.

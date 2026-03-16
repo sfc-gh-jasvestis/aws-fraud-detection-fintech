@@ -17,7 +17,7 @@
 
 ## Pre-Recording Checklist
 
-- [ ] Run `SNOWFLAKE_CONNECTION_NAME=demo43 python scripts/generate_synthetic_data.py --quick`
+- [ ] Run `SNOWFLAKE_CONNECTION_NAME=<SF_CONNECTION> python scripts/generate_synthetic_data.py --quick`
 - [ ] Verify health check: alerts > 50, cases > 5
 - [ ] Open Snowsight in Chrome (full screen, dark mode)
 - [ ] Open Streamlit Investigator Copilot (full screen)
@@ -145,7 +145,7 @@ Investigator: Streamlit in Snowflake
 Executive: Amazon QuickSight
 One governed data platform.
 
-jasvestis@snowflake.com
+<YOUR_EMAIL>
 ```
 
 ---

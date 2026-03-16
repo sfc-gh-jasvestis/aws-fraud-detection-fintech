@@ -11,7 +11,7 @@
 --
 -- Or for a quick 5-min demo reset (smaller dataset):
 --   python scripts/generate_synthetic_data.py --scenario all --trades 5000 --onchain 1000
---   snowsql -c demo43 -f sql/demo/demo_seed.sql
+--   snowsql -c <SF_CONNECTION> -f sql/demo/demo_seed.sql
 --
 -- Safe to run multiple times — idempotent.
 -- =============================================================================

@@ -10,7 +10,7 @@
 ## Pre-wired: Snowflake Public Data (Free) — No Subscription Required
 
 The platform ships with **real market data** from `SNOWFLAKE_PUBLIC_DATA_FREE`, a free
-Marketplace listing that is auto-provisioned on most Snowflake accounts (including `demo43`).
+Marketplace listing that is auto-provisioned on most Snowflake accounts (including `<SF_CONNECTION>`).
 
 ### What's Available (zero-cost, already wired into `03_harmonised.sql`)
 
@@ -87,7 +87,7 @@ richer data (not required for booth demo):
 | `market data` | **Kaiko Digital Assets Market Data** | Kaiko | Order book data, CEX trade data, volatility |
 | `sanctions` | **Dow Jones Risk & Compliance** | Dow Jones | Sanctions lists (OFAC, UN, EU), PEP lists |
 
-> **Note**: Availability varies by account tier and region. For demo43 (internal), try Cybersyn first — it is typically pre-approved for Snowflake internal accounts.
+> **Note**: Availability varies by account tier and region. For <SF_CONNECTION> (internal), try Cybersyn first — it is typically pre-approved for Snowflake internal accounts.
 
 ### Subscribe (UI walkthrough)
 
@@ -97,7 +97,7 @@ richer data (not required for booth demo):
    - Allium: `ALLIUM__ONCHAIN_ANALYTICS`
    - TRM Labs: `TRM__CRYPTO_RISK_INTELLIGENCE`
    - Kaiko: `KAIKO__DIGITAL_ASSETS`
-3. Select your Snowflake account (`demo43`) as the consumer
+3. Select your Snowflake account (`<SF_CONNECTION>`) as the consumer
 4. Click **Get Data** → accept terms
 5. Update `.env`:
 ```bash
