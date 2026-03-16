@@ -1,0 +1,308 @@
+<mxGraphModel dx="1426" dy="824" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="620" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ZONE BACKGROUND LABELS -->
+    <mxCell id="bg_aws" value="aws" style="text;html=1;align=left;verticalAlign=top;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=18;fontColor=#FF9900;" vertex="1" parent="1">
+      <mxGeometry x="14" y="12" width="60" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="bg_sf" value="Snowflake Platform (2 Warehouses: WH_SURVEILLANCE M | WH_ML L)" style="text;html=1;align=left;verticalAlign=top;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=13;fontColor=#29B5E8;" vertex="1" parent="1">
+      <mxGeometry x="434" y="12" width="480" height="22" as="geometry" />
+    </mxCell>
+
+    <!-- CEX CONTAINER -->
+    <mxCell id="c10" value="CEX / Exchange (AWS)" style="swimlane;startSize=28;fillColor=#FF9900;strokeColor=#cc7a00;fontColor=#000000;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="10" y="40" width="200" height="228" as="geometry" />
+    </mxCell>
+    <mxCell id="n11" value="Matching Engine&#xa;(EC2 / ECS)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c10">
+      <mxGeometry x="10" y="8" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="n12" value="Order Book Service&#xa;(EC2 / ECS)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c10">
+      <mxGeometry x="10" y="56" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="n13" value="Balance / Account&#xa;(Aurora PostgreSQL)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c10">
+      <mxGeometry x="10" y="104" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="n14" value="System &amp; App Logs&#xa;(CloudWatch Logs)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c10">
+      <mxGeometry x="10" y="152" width="180" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ONCHAIN CONTAINER -->
+    <mxCell id="c20" value="On-Chain Data Sources" style="swimlane;startSize=28;fillColor=#FF9900;strokeColor=#cc7a00;fontColor=#000000;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="10" y="278" width="200" height="118" as="geometry" />
+    </mxCell>
+    <mxCell id="n21" value="Blockchain Indexer&#xa;(Lambda / ECS)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c20">
+      <mxGeometry x="10" y="8" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="n22" value="3rd-Party Providers&#xa;(Chainalysis, TRM, Nansen)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c20">
+      <mxGeometry x="10" y="56" width="180" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- AWS INGEST CONTAINER -->
+    <mxCell id="c30" value="AWS Ingestion Layer" style="swimlane;startSize=28;fillColor=#FF9900;strokeColor=#cc7a00;fontColor=#000000;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="220" y="40" width="200" height="356" as="geometry" />
+    </mxCell>
+    <mxCell id="n31" value="Kinesis Data Streams&#xa;cex-trades | orders | balances" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c30">
+      <mxGeometry x="10" y="8" width="180" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n33" value="Kinesis Firehose&#xa;-&gt; S3 (batch / logs)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c30">
+      <mxGeometry x="10" y="64" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="n34" value="S3: crypto-surveillance-raw&#xa;(landing zone)" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c30">
+      <mxGeometry x="10" y="112" width="180" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="n36" value="Lambda Functions&#xa;on-chain normalizer + log parser" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="c30">
+      <mxGeometry x="10" y="160" width="180" height="48" as="geometry" />
+    </mxCell>
+
+    <!-- SF RAW CONTAINER -->
+    <mxCell id="c50" value="RAW Layer (CRYPTO_SURVEILLANCE.RAW)" style="swimlane;startSize=28;fillColor=#29B5E8;strokeColor=#1a8ab5;fontColor=#000000;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="430" y="40" width="210" height="265" as="geometry" />
+    </mxCell>
+    <mxCell id="n51" value="Snowpipe Streaming&#xa;(Kinesis -&gt; Snowflake SDK)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c50">
+      <mxGeometry x="10" y="8" width="190" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n52" value="Snowpipe Batch&#xa;(S3 SQS notification -&gt; Stage)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c50">
+      <mxGeometry x="10" y="64" width="190" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="n53" value="VARIANT RAW Tables&#xa;CEX_TRADES | CEX_ORDERS&#xa;CEX_BALANCES | ONCHAIN_EVENTS" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c50">
+      <mxGeometry x="10" y="112" width="190" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="n54" value="DLQ_ERRORS&#xa;(malformed / rejected records)" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="c50">
+      <mxGeometry x="10" y="176" width="190" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- SF HARMONISED CONTAINER -->
+    <mxCell id="c60" value="HARMONISED Layer" style="swimlane;startSize=28;fillColor=#29B5E8;strokeColor=#1a8ab5;fontColor=#000000;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="650" y="40" width="210" height="356" as="geometry" />
+    </mxCell>
+    <mxCell id="n61" value="Dynamic Tables:&#xa;TRADES | ORDERS&#xa;BALANCES_SNAPSHOT | ONCHAIN_TRANSFERS" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c60">
+      <mxGeometry x="10" y="8" width="190" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="n62" value="ENTITY&#xa;(KYC attributes, risk rating, PII-tagged)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c60">
+      <mxGeometry x="10" y="72" width="190" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n63" value="WALLET&#xa;(chain, owner, mixer / sanction tags)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c60">
+      <mxGeometry x="10" y="128" width="190" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n64" value="ENTITY_RELATION&#xa;(entity-wallet-counterparty graph)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c60">
+      <mxGeometry x="10" y="184" width="190" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n65" value="VW_SYNTHETIC_PRICES&#xa;VW_SYNTHETIC_WALLET_LABELS" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c60">
+      <mxGeometry x="10" y="240" width="190" height="48" as="geometry" />
+    </mxCell>
+
+    <!-- SF FEATURES CONTAINER -->
+    <mxCell id="c70" value="FEATURES Layer" style="swimlane;startSize=28;fillColor=#29B5E8;strokeColor=#1a8ab5;fontColor=#000000;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="870" y="40" width="210" height="174" as="geometry" />
+    </mxCell>
+    <mxCell id="n71" value="TRADE_FEATURES&#xa;rolling vol, freq, wash-trade signals" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c70">
+      <mxGeometry x="10" y="8" width="190" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="n72" value="ENTITY_FEATURES&#xa;wallet exposure, velocity, burst clusters" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c70">
+      <mxGeometry x="10" y="72" width="190" height="56" as="geometry" />
+    </mxCell>
+
+    <!-- SF ANALYTICS + AI CONTAINER -->
+    <mxCell id="c80" value="ANALYTICS + ML Layer" style="swimlane;startSize=28;fillColor=#29B5E8;strokeColor=#1a8ab5;fontColor=#000000;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="870" y="224" width="210" height="278" as="geometry" />
+    </mxCell>
+    <mxCell id="n81" value="Detection Rules (6 SQL Views)&#xa;Pump&amp;Dump | Wash Trades | Sanctions&#xa;Cross-Exchange | Structuring | Mixer" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c80">
+      <mxGeometry x="10" y="8" width="190" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="n82" value="Snowpark ML (XGBoost)&#xa;Fraud + AML Scorer UDF&#xa;(WH_ML for training)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="c80">
+      <mxGeometry x="10" y="72" width="190" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="n83" value="ANALYTICS.ALERTS&#xa;severity | reason codes | ML score" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="c80">
+      <mxGeometry x="10" y="136" width="190" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n84" value="ANALYTICS.CASES&#xa;case lifecycle | owner | state | SLA" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="c80">
+      <mxGeometry x="10" y="192" width="190" height="48" as="geometry" />
+    </mxCell>
+
+    <!-- BEDROCK CONTAINER -->
+    <mxCell id="c90" value="Amazon Bedrock (Agentic AI)" style="swimlane;startSize=28;fillColor=#7B68EE;strokeColor=#5a4fcf;fontColor=#ffffff;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="1090" y="40" width="210" height="174" as="geometry" />
+    </mxCell>
+    <mxCell id="n91" value="SP_GENERATE_CASE_NARRATIVE&#xa;(Snowpark External Access + SigV4)" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="c90">
+      <mxGeometry x="10" y="8" width="190" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="n92" value="Claude LLM&#xa;SAR narrative + next steps" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="c90">
+      <mxGeometry x="10" y="72" width="190" height="56" as="geometry" />
+    </mxCell>
+
+    <!-- CONSUMPTION CONTAINER -->
+    <mxCell id="c100" value="Consumption Layer" style="swimlane;startSize=28;fillColor=#1a6b3c;strokeColor=#145530;fontColor=#ffffff;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="1090" y="224" width="210" height="278" as="geometry" />
+    </mxCell>
+    <mxCell id="n101" value="Streamlit in Snowflake&#xa;Investigator Copilot UI&#xa;cases | trades | Bedrock explain" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="c100">
+      <mxGeometry x="10" y="8" width="190" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="n102" value="Amazon QuickSight&#xa;Alert Volume | Entity Heatmap&#xa;Case SLA | Trading | On-Chain" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="c100">
+      <mxGeometry x="10" y="80" width="190" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="n103" value="VW_KRIs / VW_KPIs&#xa;(exec reporting views)" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="c100">
+      <mxGeometry x="10" y="152" width="190" height="48" as="geometry" />
+    </mxCell>
+
+    <!-- GOVERNANCE CONTAINER -->
+    <mxCell id="c110" value="Governance -- Snowflake Horizon" style="swimlane;startSize=28;fillColor=#2D8653;strokeColor=#1f5c39;fontColor=#ffffff;fontStyle=1;fontSize=10;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="430" y="408" width="870" height="100" as="geometry" />
+    </mxCell>
+    <mxCell id="n111" value="Masking Policies&#xa;(PII / KYC fields)" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="c110">
+      <mxGeometry x="10" y="10" width="260" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n112" value="Row Access Policies&#xa;(role-based case scoping)" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="c110">
+      <mxGeometry x="290" y="10" width="260" height="48" as="geometry" />
+    </mxCell>
+    <mxCell id="n113" value="Object Tags + Lineage&#xa;Data Classification" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="c110">
+      <mxGeometry x="570" y="10" width="260" height="48" as="geometry" />
+    </mxCell>
+
+    <!-- EDGES: CEX -> AWS Ingest -->
+    <mxCell id="e1" value="trade events" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" source="n11" target="n31" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e2" value="order snapshots" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" source="n12" target="n31" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e3" value="CDC via DMS" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n13" target="n31" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e4" value="log subscription" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n14" target="n33" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ONCHAIN -> Lambda -> KDS / S3 -->
+    <mxCell id="e5" value="block events" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n21" target="n36" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e6" value="wallet intel API" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n22" target="n36" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n36" target="n31" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n36" target="n34" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Firehose -> S3 -->
+    <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n33" target="n34" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- AWS Ingest -> Snowflake RAW -->
+    <mxCell id="e10" value="Snowpipe Streaming SDK" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;fontStyle=2;" edge="1" source="n31" target="n51" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e12" value="SQS notification" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n34" target="n52" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RAW layer internal -->
+    <mxCell id="e13" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n51" target="n53" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n52" target="n53" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e15" value="parse errors" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n53" target="n54" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RAW -> HARMONISED -->
+    <mxCell id="e16" value="Dynamic Tables" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n53" target="n61" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n53" target="n62" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e18" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n53" target="n63" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- HARMONISED entity graph -->
+    <mxCell id="e19" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n62" target="n64" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e20" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n63" target="n64" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- HARMONISED -> FEATURES -->
+    <mxCell id="e21" value="Snowpark" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n61" target="n71" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e22" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n62" target="n72" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e23" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n63" target="n72" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e24" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n64" target="n72" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- FEATURES -> ANALYTICS -->
+    <mxCell id="e25" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n71" target="n81" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e26" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n72" target="n81" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e27" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n71" target="n82" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e28" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n72" target="n82" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e29" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n81" target="n83" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e30" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n82" target="n83" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e31" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n83" target="n84" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- CASES -> Bedrock -->
+    <mxCell id="e32" value="case_id context" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n84" target="n91" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e33" value="External Access (SigV4)" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n91" target="n92" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e34" value="SAR narrative" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="n92" target="n91" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- -> Consumption -->
+    <mxCell id="e35" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n84" target="n101" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e36" value="narrative" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n91" target="n101" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e37" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n83" target="n103" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e38" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n84" target="n103" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e39" value="" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="n103" target="n102" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Governance dashed overlays -->
+    <mxCell id="e40" value="PII tagged" style="edgeStyle=orthogonalEdgeStyle;dashed=1;fontSize=9;strokeColor=#2D8653;fontColor=#2D8653;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" source="n111" target="n62" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e41" value="lineage" style="edgeStyle=orthogonalEdgeStyle;dashed=1;fontSize=9;strokeColor=#2D8653;fontColor=#2D8653;" edge="1" source="n113" target="n61" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
