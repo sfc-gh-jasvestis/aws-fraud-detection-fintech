@@ -1,5 +1,4 @@
 # Digital Asset Market Surveillance & Financial Crime Analytics
-### Snowflake + AWS | Track 2: CEX Security · Web3 · RWA Infrastructure
 
 > **Booth Story**: A regulator-friendly, end-to-end financial crime detection platform for crypto exchanges — governed data in Snowflake AI Data Cloud, high-throughput ingestion on AWS, and an agentic investigator copilot powered by Amazon Bedrock.
 
