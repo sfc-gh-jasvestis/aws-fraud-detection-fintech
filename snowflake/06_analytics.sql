@@ -340,12 +340,8 @@ WITH daily_txns AS (
         account_id,
         wallet_id,
         DATE_TRUNC('DAY', trade_ts)             AS trade_date,
-        COUNT(*) FILTER (
-            WHERE quote_qty BETWEEN 8000 AND 9999
-        )                                       AS below_threshold_count,
-        SUM(quote_qty) FILTER (
-            WHERE quote_qty BETWEEN 8000 AND 9999
-        )                                       AS below_threshold_volume,
+        COUNT(CASE WHEN quote_qty BETWEEN 8000 AND 9999 THEN 1 END) AS below_threshold_count,
+        SUM(CASE WHEN quote_qty BETWEEN 8000 AND 9999 THEN quote_qty ELSE 0 END) AS below_threshold_volume,
         SUM(quote_qty)                          AS total_daily_volume
     FROM CRYPTO_SURVEILLANCE.HARMONISED.TRADES
     WHERE trade_ts >= DATEADD('day', -30, CURRENT_TIMESTAMP())

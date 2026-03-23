@@ -5,10 +5,5 @@
 __pycache__/
 *.pyc
 .DS_Store
-*.tfstate
-*.tfstate.backup
-.terraform/
-*.tfvars
-node_modules/
 .venv/
 venv/

@@ -483,7 +483,7 @@ def _rand_value(symbol: str, decimals: int, rng: random.Random) -> int:
 
 # ─── Snowflake writers ────────────────────────────────────────────────────────
 
-BATCH = 500
+BATCH = 50
 
 
 def _batched(lst: list, size: int = BATCH) -> Iterator[list]:
@@ -495,14 +495,16 @@ def _insert_raw(conn, table: str, records: list[dict], source: str = "SYNTHETIC"
     if not records:
         return 0
     cs   = conn.cursor()
-    rows = [(json.dumps(r), source, "SYNTHETIC_GENERATOR") for r in records]
     total = 0
-    for batch in _batched(rows):
-        cs.executemany(
-            f"""INSERT INTO {table} (PAYLOAD, _SOURCE, _INGEST_METHOD)
-                SELECT PARSE_JSON(%s), %s, %s""",
-            batch,
-        )
+    for batch in _batched(records):
+        select_clauses = []
+        for r in batch:
+            payload_str = json.dumps(r).replace("'", "''")
+            select_clauses.append(
+                f"SELECT PARSE_JSON('{payload_str}'), '{source}', 'SYNTHETIC_GENERATOR'"
+            )
+        sql = f"INSERT INTO {table} (PAYLOAD, _SOURCE, _INGEST_METHOD) " + " UNION ALL ".join(select_clauses)
+        cs.execute(sql)
         total += len(batch)
     cs.close()
     return total

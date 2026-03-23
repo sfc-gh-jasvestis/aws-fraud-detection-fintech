@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Phase 1: Snowflake Foundations
 -- File: 00_setup.sql
--- Account: <SF_CONNECTION>  |  AWS Account: <AWS_ACCOUNT_ID>  |  Region: us-west-2
+-- Account: demo43  |  AWS Account: 018437500440  |  Region: us-west-2
 -- Run as: ACCOUNTADMIN or SYSADMIN with USERADMIN grant
 -- =============================================================================
 
@@ -121,3 +121,26 @@ ALTER WAREHOUSE WH_ML           SET RESOURCE_MONITOR = RM_CRYPTO_SURVEILLANCE;
 -- Required by VW_MARKETPLACE_PRICES and VW_MARKETPLACE_FX_RATES in 03_harmonised.sql.
 GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE_PUBLIC_DATA_FREE
     TO ROLE SURVEILLANCE_ADMIN;
+
+-- ─── QuickSight Service Account ─────────────────────────────────────────────
+-- Used by Amazon QuickSight DIRECT_QUERY data source (PASSWORD auth).
+-- Password must match the QuickSight data source credential configuration.
+CREATE USER IF NOT EXISTS QUICKSIGHT_SVC
+    PASSWORD = 'QsSnow2026!Crypto#Svc'
+    DEFAULT_ROLE = SURVEILLANCE_ANALYST
+    DEFAULT_WAREHOUSE = WH_SURVEILLANCE
+    DEFAULT_NAMESPACE = CRYPTO_SURVEILLANCE.ANALYTICS
+    TYPE = LEGACY_SERVICE
+    COMMENT = 'Service account for Amazon QuickSight DIRECT_QUERY to Snowflake';
+
+GRANT ROLE SURVEILLANCE_ANALYST TO USER QUICKSIGHT_SVC;
+GRANT USAGE ON WAREHOUSE WH_SURVEILLANCE TO ROLE SURVEILLANCE_ANALYST;
+
+-- ─── QuickSight Network Policy ──────────────────────────────────────────────
+-- User-level policy allowing QuickSight us-west-2 IP range.
+-- Required when an account-level network policy blocks external IPs.
+CREATE NETWORK POLICY IF NOT EXISTS QUICKSIGHT_NETWORK_POLICY
+    ALLOWED_IP_LIST = ('54.70.204.128/27')
+    COMMENT = 'Allow Amazon QuickSight us-west-2 IP range to connect';
+
+ALTER USER QUICKSIGHT_SVC SET NETWORK_POLICY = QUICKSIGHT_NETWORK_POLICY;

@@ -41,44 +41,31 @@ windows AS (
         venue,
         trade_ts,
         trading_pair,
-        COUNT(*)            OVER w1h AS trade_count_1h,
-        SUM(quote_qty)      OVER w1h AS volume_usd_1h,
-        AVG(price)          OVER w1h AS avg_price_1h,
-        STDDEV(price)       OVER w1h AS price_stddev_1h,
-        SUM(CASE WHEN side = 'BUY'  THEN quote_qty ELSE 0 END) OVER w1h AS buy_vol_1h,
-        SUM(CASE WHEN side = 'SELL' THEN quote_qty ELSE 0 END) OVER w1h AS sell_vol_1h,
-        COUNT(*)            OVER w4h AS trade_count_4h,
-        SUM(quote_qty)      OVER w4h AS volume_usd_4h,
-        AVG(price)          OVER w4h AS avg_price_4h,
-        STDDEV(price)       OVER w4h AS price_stddev_4h,
-        COUNT(*)            OVER w24h AS trade_count_24h,
-        SUM(quote_qty)      OVER w24h AS volume_usd_24h,
-        AVG(price)          OVER w24h AS avg_price_24h,
-        MAX(price)          OVER w24h AS price_max_24h,
-        MIN(price)          OVER w24h AS price_min_24h,
-        SUM(CASE WHEN side = 'BUY'  THEN quote_qty ELSE 0 END) OVER w24h AS buy_vol_24h,
-        SUM(CASE WHEN side = 'SELL' THEN quote_qty ELSE 0 END) OVER w24h AS sell_vol_24h,
-        COUNT(DISTINCT trading_pair) OVER w24h AS unique_pairs_24h,
-        COUNT(DISTINCT venue)        OVER w24h AS unique_venues_24h,
-        SUM(CASE WHEN is_maker THEN 1 ELSE 0 END) OVER w24h AS maker_count_24h,
-        COUNT(*)            OVER w7d AS trade_count_7d,
-        SUM(quote_qty)      OVER w7d AS volume_usd_7d,
-        AVG(quote_qty)      OVER w7d AS avg_trade_size_7d,
-        STDDEV(quote_qty)   OVER w7d AS trade_size_stddev_7d
+        COUNT(*) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW) AS trade_count_1h,
+        SUM(quote_qty) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW) AS volume_usd_1h,
+        AVG(price) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW) AS avg_price_1h,
+        STDDEV(price) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW) AS price_stddev_1h,
+        SUM(CASE WHEN side = 'BUY'  THEN quote_qty ELSE 0 END) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW) AS buy_vol_1h,
+        SUM(CASE WHEN side = 'SELL' THEN quote_qty ELSE 0 END) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW) AS sell_vol_1h,
+        COUNT(*) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '4 hours' PRECEDING AND CURRENT ROW) AS trade_count_4h,
+        SUM(quote_qty) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '4 hours' PRECEDING AND CURRENT ROW) AS volume_usd_4h,
+        AVG(price) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '4 hours' PRECEDING AND CURRENT ROW) AS avg_price_4h,
+        STDDEV(price) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '4 hours' PRECEDING AND CURRENT ROW) AS price_stddev_4h,
+        COUNT(*) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS trade_count_24h,
+        SUM(quote_qty) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS volume_usd_24h,
+        AVG(price) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS avg_price_24h,
+        MAX(price) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS price_max_24h,
+        MIN(price) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS price_min_24h,
+        SUM(CASE WHEN side = 'BUY'  THEN quote_qty ELSE 0 END) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS buy_vol_24h,
+        SUM(CASE WHEN side = 'SELL' THEN quote_qty ELSE 0 END) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS sell_vol_24h,
+        1 AS unique_pairs_24h,
+        COUNT(DISTINCT venue) OVER (PARTITION BY account_id) AS unique_venues_24h,
+        SUM(CASE WHEN is_maker THEN 1 ELSE 0 END) OVER (PARTITION BY account_id, trading_pair ORDER BY trade_ts RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW) AS maker_count_24h,
+        COUNT(*) OVER (PARTITION BY account_id ORDER BY trade_ts RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW) AS trade_count_7d,
+        SUM(quote_qty) OVER (PARTITION BY account_id ORDER BY trade_ts RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW) AS volume_usd_7d,
+        AVG(quote_qty) OVER (PARTITION BY account_id ORDER BY trade_ts RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW) AS avg_trade_size_7d,
+        STDDEV(quote_qty) OVER (PARTITION BY account_id ORDER BY trade_ts RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW) AS trade_size_stddev_7d
     FROM base
-    WINDOW
-        w1h  AS (PARTITION BY account_id, trading_pair
-                 ORDER BY trade_ts
-                 RANGE BETWEEN INTERVAL '1 hour'  PRECEDING AND CURRENT ROW),
-        w4h  AS (PARTITION BY account_id, trading_pair
-                 ORDER BY trade_ts
-                 RANGE BETWEEN INTERVAL '4 hours' PRECEDING AND CURRENT ROW),
-        w24h AS (PARTITION BY account_id, trading_pair
-                 ORDER BY trade_ts
-                 RANGE BETWEEN INTERVAL '24 hours' PRECEDING AND CURRENT ROW),
-        w7d  AS (PARTITION BY account_id
-                 ORDER BY trade_ts
-                 RANGE BETWEEN INTERVAL '7 days' PRECEDING AND CURRENT ROW)
 ),
 wash_pairs AS (
     SELECT DISTINCT
@@ -193,6 +180,12 @@ WITH onchain_stats AS (
       AND w.owner_entity_id IS NOT NULL
     GROUP BY 1
 ),
+trades_with_lag AS (
+    SELECT account_id, trade_ts,
+        LAG(trade_ts) OVER (PARTITION BY account_id ORDER BY trade_ts) AS prev_trade_ts
+    FROM CRYPTO_SURVEILLANCE.HARMONISED.TRADES
+    WHERE trade_ts >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+),
 cex_stats AS (
     SELECT
         account_id                                   AS entity_id,
@@ -200,12 +193,15 @@ cex_stats AS (
         SUM(quote_qty)                               AS cex_volume_usd_30d,
         COUNT(DISTINCT trading_pair)                 AS unique_pairs_30d,
         STDDEV(quote_qty)                            AS trade_size_volatility_30d,
-        MAX(quote_qty)                               AS max_single_trade_30d,
-        SUM(CASE WHEN DATEDIFF('hour',
-                    LAG(trade_ts) OVER (PARTITION BY account_id ORDER BY trade_ts),
-                    trade_ts) < 1 THEN 1 ELSE 0 END) AS burst_trade_count_30d
+        MAX(quote_qty)                               AS max_single_trade_30d
     FROM CRYPTO_SURVEILLANCE.HARMONISED.TRADES
     WHERE trade_ts >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+    GROUP BY 1
+),
+burst_stats AS (
+    SELECT account_id AS entity_id,
+        SUM(CASE WHEN prev_trade_ts IS NOT NULL AND DATEDIFF('hour', prev_trade_ts, trade_ts) < 1 THEN 1 ELSE 0 END) AS burst_trade_count_30d
+    FROM trades_with_lag
     GROUP BY 1
 )
 SELECT
@@ -220,7 +216,7 @@ SELECT
     COALESCE(cs.unique_pairs_30d, 0)         AS unique_pairs_30d,
     COALESCE(cs.trade_size_volatility_30d,0) AS trade_size_volatility_30d,
     COALESCE(cs.max_single_trade_30d, 0)     AS max_single_trade_30d,
-    COALESCE(cs.burst_trade_count_30d, 0)    AS burst_trade_count_30d,
+    COALESCE(bs.burst_trade_count_30d, 0)    AS burst_trade_count_30d,
     COALESCE(oc.onchain_tx_count_30d, 0)     AS onchain_tx_count_30d,
     COALESCE(oc.onchain_volume_30d, 0)       AS onchain_volume_30d,
     COALESCE(oc.unique_counterparties_30d,0) AS unique_counterparties_30d,
@@ -231,13 +227,14 @@ SELECT
                                              AS has_mixer_exposure,
     CASE WHEN COALESCE(oc.sanctioned_volume_30d, 0)   > 0  THEN TRUE ELSE FALSE END
                                              AS has_sanctioned_exposure,
-    CASE WHEN COALESCE(cs.burst_trade_count_30d, 0)   > 20 THEN TRUE ELSE FALSE END
+    CASE WHEN COALESCE(bs.burst_trade_count_30d, 0)   > 20 THEN TRUE ELSE FALSE END
                                              AS has_burst_behaviour,
     (SELECT COUNT(*) FROM CRYPTO_SURVEILLANCE.HARMONISED.WALLET
      WHERE owner_entity_id = e.entity_id)   AS wallet_count,
     CURRENT_TIMESTAMP()                      AS feature_computed_at
 FROM CRYPTO_SURVEILLANCE.HARMONISED.ENTITY e
 LEFT JOIN cex_stats    cs ON e.entity_id = cs.entity_id
+LEFT JOIN burst_stats  bs ON e.entity_id = bs.entity_id
 LEFT JOIN onchain_stats oc ON e.entity_id = oc.entity_id;
 
 -- ─── Grants ───────────────────────────────────────────────────────────────────

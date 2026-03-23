@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS CRYPTO_SURVEILLANCE.ANALYTICS.CASES (
     created_by          STRING        DEFAULT 'SYSTEM'
 )
 CLUSTER BY (state, priority, DATE_TRUNC('DAY', created_at))
-DATA_RETENTION_TIME_IN_DAYS = 365
+DATA_RETENTION_TIME_IN_DAYS = 90
 COMMENT = 'Investigation case management; one case may aggregate multiple alerts';
 
 CREATE TABLE IF NOT EXISTS CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS (
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS (
     performed_by        STRING        DEFAULT 'SYSTEM',
     event_ts            TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()
 )
-DATA_RETENTION_TIME_IN_DAYS = 365
+DATA_RETENTION_TIME_IN_DAYS = 90
 COMMENT = 'Immutable audit trail of all case state transitions and analyst actions';
 
 -- ─── Auto-create cases from new CRITICAL/HIGH alerts ──────────────────────────
@@ -187,10 +187,10 @@ USE ROLE ACCOUNTADMIN;
 
 CREATE ROW ACCESS POLICY IF NOT EXISTS CRYPTO_SURVEILLANCE.ANALYTICS.RAP_CASES
     AS (assigned_to STRING) RETURNS BOOLEAN ->
-    CURRENT_ROLE() IN ('SURVEILLANCE_ADMIN', 'ACCOUNTADMIN')
+    CURRENT_ROLE() IN ('SURVEILLANCE_ADMIN', 'ACCOUNTADMIN', 'SURVEILLANCE_ANALYST')
     OR assigned_to IS NULL
     OR assigned_to = CURRENT_USER()
-COMMENT = 'Analysts see only unassigned cases or cases assigned to them';
+COMMENT = 'Analysts see all cases for aggregate dashboard views';
 
 ALTER TABLE CRYPTO_SURVEILLANCE.ANALYTICS.CASES
     ADD ROW ACCESS POLICY CRYPTO_SURVEILLANCE.ANALYTICS.RAP_CASES ON (assigned_to);
