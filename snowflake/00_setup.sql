@@ -136,11 +136,18 @@ CREATE USER IF NOT EXISTS QUICKSIGHT_SVC
 GRANT ROLE SURVEILLANCE_ANALYST TO USER QUICKSIGHT_SVC;
 GRANT USAGE ON WAREHOUSE WH_SURVEILLANCE TO ROLE SURVEILLANCE_ANALYST;
 
--- ─── QuickSight Network Policy ──────────────────────────────────────────────
--- User-level policy allowing QuickSight us-west-2 IP range.
--- Required when an account-level network policy blocks external IPs.
-CREATE NETWORK POLICY IF NOT EXISTS QUICKSIGHT_NETWORK_POLICY
-    ALLOWED_IP_LIST = ('54.70.204.128/27')
-    COMMENT = 'Allow Amazon QuickSight us-west-2 IP range to connect';
-
-ALTER USER QUICKSIGHT_SVC SET NETWORK_POLICY = QUICKSIGHT_NETWORK_POLICY;
+-- ─── QuickSight Network Policy (SE Demo Accounts) ─────────────────────────
+-- If your demo account has an account-level network policy that blocks external
+-- IPs, you need a USER-LEVEL network policy on QUICKSIGHT_SVC to allow
+-- QuickSight to connect. User-level policies override account-level ones.
+--
+-- Uncomment and adjust the ALLOWED_IP_LIST for your QuickSight region:
+--   us-west-2:  54.70.204.128/27
+--   us-east-1:  52.23.63.224/27
+--   eu-west-1:  54.76.254.0/27
+--   Full list:  https://docs.aws.amazon.com/quicksight/latest/user/regions.html
+--
+-- CREATE NETWORK POLICY IF NOT EXISTS QUICKSIGHT_NETWORK_POLICY
+--     ALLOWED_IP_LIST = ('54.70.204.128/27')
+--     COMMENT = 'Allow Amazon QuickSight to connect (adjust IP for your region)';
+-- ALTER USER QUICKSIGHT_SVC SET NETWORK_POLICY = QUICKSIGHT_NETWORK_POLICY;
