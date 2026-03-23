@@ -109,22 +109,19 @@ SELECT
 Expected: raw_trades ~50K, alerts > 50, cases > 5.
 
 ### QuickSight Dashboard URLs
-> Replace `<DASHBOARD_ID>` with your actual QuickSight dashboard IDs after publishing.
 
 | Dashboard | URL |
 |---|---|
-| Alert Volume | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/<DASHBOARD_ID>` |
-| Entity Risk Heatmap | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/<DASHBOARD_ID>` |
-| Case SLA | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/<DASHBOARD_ID>` |
-| Trading Summary | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/<DASHBOARD_ID>` |
-| On-Chain Flows | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/<DASHBOARD_ID>` |
+| CCO Weekly Surveillance Briefing (Unified) | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/crypto-cco-surveillance-briefing` |
 
-QuickSight connects to these Snowflake views:
-- `ANALYTICS.VW_QUICKSIGHT_ALERT_VOLUME`
-- `ANALYTICS.VW_QUICKSIGHT_ENTITY_HEATMAP`
-- `ANALYTICS.VW_QUICKSIGHT_CASE_SLA`
-- `ANALYTICS.VW_QUICKSIGHT_TRADING_SUMMARY`
-- `ANALYTICS.VW_QUICKSIGHT_ONCHAIN_FLOWS`
+QuickSight connects to these Snowflake views via DIRECT_QUERY (QUICKSIGHT_SVC user, SURVEILLANCE_ANALYST role):
+- `ANALYTICS.VW_KRIS` (KRI Headlines tab)
+- `ANALYTICS.VW_QUICKSIGHT_ALERT_VOLUME` (Alert Volume tab)
+- `ANALYTICS.VW_QUICKSIGHT_CASE_SLA` (Case SLA tab)
+- `ANALYTICS.VW_QUICKSIGHT_ENTITY_HEATMAP` (Entity Risk tab)
+- `ANALYTICS.VW_QUICKSIGHT_ONCHAIN_FLOWS` (On-Chain Flows tab)
+
+Amazon Q Topic: `crypto-surveillance-topic` (5 datasets, 37 columns with NL synonyms)
 
 ---
 

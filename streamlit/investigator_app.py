@@ -17,17 +17,14 @@ import pandas as pd
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
 
-# ─── Session ──────────────────────────────────────────────────────────────────
 session = get_active_session()
 
-# ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title = "Market Surveillance Investigator",
-    page_icon  = "🔍",
-    layout     = "wide",
+    page_title="Market Surveillance Investigator",
+    page_icon="🔍",
+    layout="wide",
 )
 
-# ─── Custom CSS ───────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
     .main-header {
@@ -37,28 +34,22 @@ st.markdown("""
         color: white;
         margin-bottom: 1.5rem;
     }
-    .metric-card {
-        background: #0d1117;
-        border: 1px solid #29B5E8;
-        border-radius: 8px;
-        padding: 1rem;
-        text-align: center;
-    }
     .severity-critical { color: #FF4B4B; font-weight: bold; }
     .severity-high     { color: #FF8C00; font-weight: bold; }
     .severity-medium   { color: #FFA500; }
     .severity-low      { color: #00C851; }
     .bedrock-output {
         background: #0d1117;
+        color: #e6edf3;
         border-left: 3px solid #29B5E8;
         padding: 1rem;
         border-radius: 4px;
         font-size: 0.9rem;
+        white-space: pre-wrap;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Header ───────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="main-header">
     <h2>🔍 Digital Asset Market Surveillance</h2>
@@ -194,14 +185,10 @@ def get_case_detail(case_id: str) -> dict:
 
 @st.cache_data(ttl=600, show_spinner=False)
 def call_bedrock_copilot(case_id: str) -> dict:
-    """Cached Bedrock call — first call takes ~8s; subsequent calls are instant.
-    Cache persists for 10 min so the demo feels fast after the first click.
-    Call st.cache_data.clear() to force a fresh generation.
-    """
     result = session.call(
         "CRYPTO_SURVEILLANCE.ANALYTICS.SP_GENERATE_CASE_NARRATIVE",
         case_id,
-        "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        "us.anthropic.claude-sonnet-4-20250514-v1:0"
     )
     if isinstance(result, str):
         return json.loads(result)
@@ -209,9 +196,6 @@ def call_bedrock_copilot(case_id: str) -> dict:
 
 
 def prewarm_bedrock_for_top_case() -> None:
-    """Trigger Bedrock generation for the highest-priority open case in the background.
-    Call this at app startup so the first demo click shows instant results.
-    """
     rows = session.sql("""
         SELECT case_id FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASES
         WHERE state = 'OPEN'
@@ -222,8 +206,7 @@ def prewarm_bedrock_for_top_case() -> None:
         LIMIT 1
     """).collect()
     if rows:
-        top_case_id = rows[0]["CASE_ID"]
-        call_bedrock_copilot(top_case_id)
+        call_bedrock_copilot(rows[0]["CASE_ID"])
 
 
 def update_case_state(case_id: str, new_state: str, analyst: str) -> None:
@@ -234,34 +217,66 @@ def update_case_state(case_id: str, new_state: str, analyst: str) -> None:
         WHERE case_id = '{case_id}'
     """).collect()
     session.sql(f"""
+        UPDATE CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+        SET status = '{new_state}', updated_at = CURRENT_TIMESTAMP()
+        WHERE case_id = '{case_id}'
+    """).collect()
+    session.sql(f"""
         INSERT INTO CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS
             (case_id, event_type, event_data, performed_by)
-        VALUES (
-            '{case_id}', 'STATE_CHANGE',
-            PARSE_JSON('{json.dumps({"new_state": new_state})}'),
-            '{analyst}'
-        )
+        SELECT '{case_id}', 'STATE_CHANGE',
+               PARSE_JSON('{json.dumps({"new_state": new_state})}'),
+               '{analyst}'
     """).collect()
     st.cache_data.clear()
 
 
-# ─── Layout ───────────────────────────────────────────────────────────────────
+# ─── Sidebar: filters + case picker ──────────────────────────────────────────
 
-# Sidebar: filters and navigation
+df_cases = pd.DataFrame()
+
 with st.sidebar:
     st.header("Filters")
-    priority_filter = st.selectbox("Priority", ["All","CRITICAL","HIGH","MEDIUM","LOW"])
-    state_filter    = st.selectbox("State",    ["All","OPEN","IN_REVIEW","ESCALATED","CLOSED"])
+    priority_filter = st.selectbox("Priority", ["All", "CRITICAL", "HIGH", "MEDIUM", "LOW"])
+    state_filter = st.selectbox("State", ["All", "OPEN", "IN_REVIEW", "ESCALATED", "CLOSED"])
+
+    df_cases = get_open_cases(priority_filter, state_filter)
+
+    st.divider()
+    st.header("Case Picker")
+
+    if df_cases.empty:
+        st.caption("No cases match filters.")
+        case_options = []
+    else:
+        case_options = []
+        for _, row in df_cases.iterrows():
+            label = f"{row['PRIORITY'][0]}  {row['CASE_REF']}  —  {row['TITLE'][:40]}"
+            case_options.append(label)
+
+    def _on_case_pick():
+        idx = st.session_state.get("_case_pick_idx")
+        if idx is not None and idx > 0:
+            st.session_state["selected_case_id"] = df_cases.iloc[idx - 1]["CASE_ID"]
+
+    selected_idx = st.selectbox(
+        "Select case",
+        range(len(case_options) + 1),
+        format_func=lambda i: "— pick a case —" if i == 0 else case_options[i - 1],
+        key="_case_pick_idx",
+        on_change=_on_case_pick,
+        label_visibility="collapsed",
+    )
+
     st.divider()
     analyst_name = st.text_input("Your Name", value="Analyst", key="analyst_name")
     st.divider()
     if st.button("Refresh Data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-
     st.divider()
     st.caption("Demo Controls")
-    if st.button("⚡ Pre-warm Bedrock", use_container_width=True,
+    if st.button("Pre-warm Bedrock", use_container_width=True,
                  help="Generate narrative for the top case now so the demo button is instant"):
         with st.spinner("Pre-warming Bedrock (runs once, cached 10 min)..."):
             try:
@@ -270,33 +285,32 @@ with st.sidebar:
             except Exception as exc:
                 st.warning(f"Pre-warm skipped: {exc}")
 
-# ─── KRI dashboard row ────────────────────────────────────────────────────────
+
+# ─── KRI dashboard row ───────────────────────────────────────────────────────
 st.subheader("Key Risk Indicators")
 kri = get_kri_metrics()
 
 col1, col2, col3, col4, col5, col6 = st.columns(6)
-col1.metric("Alerts (24h)",    kri.get("ALERTS_24H", 0))
-col2.metric("Critical (24h)",  kri.get("CRITICAL_24H", 0),  delta=None)
-col3.metric("Open Alerts",     kri.get("OPEN_ALERTS", 0))
-col4.metric("Open Cases",      kri.get("OPEN_CASES", 0))
-col5.metric("SLA Breached",    kri.get("SLA_BREACHED", 0),  delta=None)
-col6.metric("Escalated",       kri.get("ESCALATED", 0),     delta=None)
+col1.metric("Alerts (24h)", kri.get("ALERTS_24H", 0))
+col2.metric("Critical (24h)", kri.get("CRITICAL_24H", 0), delta=None)
+col3.metric("Open Alerts", kri.get("OPEN_ALERTS", 0))
+col4.metric("Open Cases", kri.get("OPEN_CASES", 0))
+col5.metric("SLA Breached", kri.get("SLA_BREACHED", 0), delta=None)
+col6.metric("Escalated", kri.get("ESCALATED", 0), delta=None)
 
 st.divider()
 
-# ─── Main area: case list + detail ────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["📋 Case Queue", "🔍 Case Detail", "📊 Alert Analytics"])
+# ─── Main content ─────────────────────────────────────────────────────────────
 
-# ── Tab 1: Case Queue ──────────────────────────────────────────────────────────
-with tab1:
-    df_cases = get_open_cases(priority_filter, state_filter)
+case_id = st.session_state.get("selected_case_id")
 
+if not case_id:
+    st.subheader("Case Queue")
     if df_cases.empty:
         st.info("No cases match the current filters.")
     else:
-        st.caption(f"{len(df_cases)} cases found")
+        st.caption(f"{len(df_cases)} cases — pick one from the sidebar to investigate")
 
-        # Colour-code severity
         def style_priority(val: str) -> str:
             return {
                 "CRITICAL": "color: #FF4B4B; font-weight: bold;",
@@ -305,41 +319,62 @@ with tab1:
                 "LOW":      "color: #00C851;",
             }.get(val, "")
 
-        styled = df_cases[["CASE_REF","ENTITY_ID","PRIORITY","STATE","TITLE",
-                             "PEAK_ML_PROBABILITY","AML_RISK_RATING","SLA_BREACHED",
-                             "CREATED_AT"]].style.map(
+        styled = df_cases[["CASE_REF", "ENTITY_ID", "PRIORITY", "STATE", "TITLE",
+                           "PEAK_ML_PROBABILITY", "AML_RISK_RATING", "SLA_BREACHED",
+                           "CREATED_AT"]].style.map(
             style_priority, subset=["PRIORITY"]
         )
-        st.dataframe(styled, use_container_width=True, height=400)
+        st.dataframe(styled, use_container_width=True, height=500)
 
-        # Select case for detail view
-        case_refs  = df_cases["CASE_REF"].tolist()
-        selected_ref = st.selectbox("Select a case to investigate:", ["— select —"] + case_refs)
+    with st.expander("Alert Analytics (30d)"):
+        @st.cache_data(ttl=120)
+        def get_alert_analytics() -> tuple:
+            by_type = session.sql("""
+                SELECT alert_type, severity, COUNT(*) AS cnt
+                FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+                WHERE detected_at >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+                GROUP BY 1, 2 ORDER BY cnt DESC
+            """).to_pandas()
+            by_day = session.sql("""
+                SELECT DATE_TRUNC('DAY', detected_at)::DATE AS alert_date,
+                       severity, COUNT(*) AS cnt
+                FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+                WHERE detected_at >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+                GROUP BY 1, 2 ORDER BY 1
+            """).to_pandas()
+            return by_type, by_day
 
-        if selected_ref != "— select —":
-            selected_case_id = df_cases.loc[
-                df_cases["CASE_REF"] == selected_ref, "CASE_ID"
-            ].values[0]
-            st.session_state["selected_case_id"] = selected_case_id
-            st.success(f"Case {selected_ref} loaded → switch to Case Detail tab")
+        by_type_df, by_day_df = get_alert_analytics()
+        a_col1, a_col2 = st.columns(2)
+        with a_col1:
+            st.markdown("**Alerts by Type**")
+            if not by_type_df.empty:
+                pivot = by_type_df.pivot_table(
+                    index="ALERT_TYPE", columns="SEVERITY", values="CNT", fill_value=0
+                )
+                sev_colors = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
+                st.bar_chart(pivot, color=[sev_colors.get(c, "#888888") for c in pivot.columns])
+        with a_col2:
+            st.markdown("**Daily Alert Volume**")
+            if not by_day_df.empty:
+                pivot_day = by_day_df.pivot_table(
+                    index="ALERT_DATE", columns="SEVERITY", values="CNT", fill_value=0
+                )
+                sev_colors_day = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
+                st.area_chart(pivot_day, color=[sev_colors_day.get(c, "#888888") for c in pivot_day.columns])
 
+else:
+    detail = get_case_detail(case_id)
+    c = detail["case"]
 
-# ── Tab 2: Case Detail ─────────────────────────────────────────────────────────
-with tab2:
-    case_id = st.session_state.get("selected_case_id")
-
-    if not case_id:
-        st.info("Select a case from the Case Queue tab to view details here.")
+    if not c:
+        st.warning("Case not found. Pick another from the sidebar.")
     else:
-        detail = get_case_detail(case_id)
-        c      = detail["case"]
-
-        # Case header
         sev_class = {
             "CRITICAL": "severity-critical",
             "HIGH":     "severity-high",
             "MEDIUM":   "severity-medium",
-        }.get(c.get("PRIORITY",""), "severity-low")
+        }.get(c.get("PRIORITY", ""), "severity-low")
 
         st.markdown(f"""
         ### {c.get('CASE_REF','N/A')} — {c.get('TITLE','Untitled')}
@@ -348,52 +383,46 @@ with tab2:
         **ML Score:** {float(c.get('PEAK_ML_PROBABILITY') or 0):.1%}
         """, unsafe_allow_html=True)
 
-        # Action bar
         col_a, col_b, col_c, col_d = st.columns(4)
         with col_a:
-            if st.button("▶ Start Review", use_container_width=True):
+            if st.button("Start Review", use_container_width=True):
                 update_case_state(case_id, "IN_REVIEW", analyst_name)
                 st.rerun()
         with col_b:
-            if st.button("⬆ Escalate", use_container_width=True):
+            if st.button("Escalate", use_container_width=True):
                 update_case_state(case_id, "ESCALATED", analyst_name)
                 st.rerun()
         with col_c:
-            if st.button("✅ Close — TP", use_container_width=True):
+            if st.button("Close — TP", use_container_width=True):
                 update_case_state(case_id, "CLOSED", analyst_name)
                 st.rerun()
         with col_d:
-            if st.button("🚫 False Positive", use_container_width=True):
+            if st.button("False Positive", use_container_width=True):
                 update_case_state(case_id, "FALSE_POSITIVE", analyst_name)
                 st.rerun()
 
         st.divider()
 
-        # Entity profile
-        with st.expander("👤 Entity Profile", expanded=True):
+        with st.expander("Entity Profile", expanded=True):
             e_col1, e_col2, e_col3 = st.columns(3)
             e_col1.markdown(f"**KYC Tier:** `{c.get('KYC_TIER','?')}`")
             e_col1.markdown(f"**AML Rating:** `{c.get('AML_RISK_RATING','?')}`")
-            e_col2.markdown(f"**PEP:** {'⚠️ YES' if c.get('PEP_FLAG') else '✅ NO'}")
-            e_col2.markdown(f"**Sanctions:** {'🚨 YES' if c.get('SANCTIONS_FLAG') else '✅ NO'}")
+            e_col2.markdown(f"**PEP:** {'YES' if c.get('PEP_FLAG') else 'NO'}")
+            e_col2.markdown(f"**Sanctions:** {'YES' if c.get('SANCTIONS_FLAG') else 'NO'}")
             e_col3.markdown(f"**Account Type:** `{c.get('ACCOUNT_TYPE','?')}`")
             e_col3.markdown(f"**Onboarded:** `{c.get('ONBOARDED_AT','?')}`")
 
-        # Alerts
-        with st.expander(f"🚨 Alerts ({len(detail['alerts'])})", expanded=True):
+        with st.expander(f"Alerts ({len(detail['alerts'])})", expanded=True):
             if not detail["alerts"].empty:
                 st.dataframe(detail["alerts"], use_container_width=True)
             else:
                 st.caption("No alerts linked to this case.")
 
-        # Trade activity
         col_t, col_oc = st.columns(2)
         with col_t:
-            with st.expander(f"📈 CEX Trades (7d, {len(detail['trades'])} rows)"):
+            with st.expander(f"CEX Trades (7d, {len(detail['trades'])} rows)"):
                 if not detail["trades"].empty:
                     st.dataframe(detail["trades"], use_container_width=True, height=300)
-
-                    # Mini chart: volume over time
                     if "TRADE_TS" in detail["trades"].columns:
                         chart_data = (
                             detail["trades"]
@@ -405,20 +434,19 @@ with tab2:
                                       color="#29B5E8")
 
         with col_oc:
-            with st.expander(f"⛓️ On-Chain Activity (30d, {len(detail['onchain'])} rows)"):
+            with st.expander(f"On-Chain Activity (30d, {len(detail['onchain'])} rows)"):
                 if not detail["onchain"].empty:
                     st.dataframe(detail["onchain"], use_container_width=True, height=300)
 
-        # Bedrock Investigator Copilot
         st.divider()
-        st.subheader("🤖 Bedrock Investigator Copilot")
+        st.subheader("Bedrock Investigator Copilot")
 
         if c.get("SAR_NARRATIVE"):
             st.success("Narrative already generated. Re-generate to refresh.")
             st.markdown(f'<div class="bedrock-output">{c["SAR_NARRATIVE"]}</div>',
-                         unsafe_allow_html=True)
+                        unsafe_allow_html=True)
 
-        if st.button("✨ Generate Case Narrative & SAR Draft (Bedrock)", type="primary",
+        if st.button("Generate Case Narrative & SAR Draft (Bedrock)", type="primary",
                      use_container_width=True):
             with st.spinner("Calling Amazon Bedrock (Claude)..."):
                 try:
@@ -442,15 +470,15 @@ with tab2:
 
                         with n_col2:
                             st.markdown("**Recommended Action**")
-                            rec = result.get("recommended_action","")
+                            rec = result.get("recommended_action", "")
                             colour = "🔴" if "SAR" in rec or "FREEZE" in rec else "🟡"
                             st.markdown(f"{colour} **{rec}**")
 
                             st.markdown("**Next Steps**")
-                            for step in result.get("next_steps", []):
-                                st.markdown(f"1. {step}")
+                            for i, step in enumerate(result.get("next_steps", []), 1):
+                                st.markdown(f"{i}. {step}")
 
-                        with st.expander("📄 Full SAR Narrative"):
+                        with st.expander("Full SAR Narrative"):
                             st.markdown(
                                 f'<div class="bedrock-output">{result.get("sar_narrative","")}</div>',
                                 unsafe_allow_html=True
@@ -460,52 +488,6 @@ with tab2:
                 except Exception as exc:
                     st.error(f"Error calling copilot: {exc}")
 
-        # Case audit trail
-        with st.expander("📜 Case Audit Trail"):
+        with st.expander("Case Audit Trail"):
             if not detail["events"].empty:
                 st.dataframe(detail["events"], use_container_width=True)
-
-
-# ── Tab 3: Alert Analytics ─────────────────────────────────────────────────────
-with tab3:
-    st.subheader("Alert Volume & Distribution")
-
-    @st.cache_data(ttl=120)
-    def get_alert_analytics() -> tuple:
-        by_type = session.sql("""
-            SELECT alert_type, severity, COUNT(*) AS cnt
-            FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
-            WHERE detected_at >= DATEADD('day', -30, CURRENT_TIMESTAMP())
-            GROUP BY 1, 2
-            ORDER BY cnt DESC
-        """).to_pandas()
-
-        by_day = session.sql("""
-            SELECT DATE_TRUNC('DAY', detected_at)::DATE AS alert_date,
-                   severity, COUNT(*) AS cnt
-            FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
-            WHERE detected_at >= DATEADD('day', -30, CURRENT_TIMESTAMP())
-            GROUP BY 1, 2
-            ORDER BY 1
-        """).to_pandas()
-
-        return by_type, by_day
-
-    by_type_df, by_day_df = get_alert_analytics()
-
-    a_col1, a_col2 = st.columns(2)
-    with a_col1:
-        st.markdown("**Alerts by Type (30d)**")
-        if not by_type_df.empty:
-            pivot = by_type_df.pivot_table(
-                index="ALERT_TYPE", columns="SEVERITY", values="CNT", fill_value=0
-            )
-            st.bar_chart(pivot, color=["#FF4B4B","#FF8C00","#FFA500","#00C851"])
-
-    with a_col2:
-        st.markdown("**Daily Alert Volume (30d)**")
-        if not by_day_df.empty:
-            pivot_day = by_day_df.pivot_table(
-                index="ALERT_DATE", columns="SEVERITY", values="CNT", fill_value=0
-            )
-            st.area_chart(pivot_day, color=["#FF4B4B","#FF8C00","#FFA500","#00C851"])
