@@ -229,7 +229,7 @@ One governed data platform.
 
 ### Unified CCO Dashboard (✅ Deployed)
 
-**Dashboard ID**: `crypto-cco-surveillance-briefing`
+**Dashboard ID**: `<DASHBOARD_ID>`
 **Dashboard Name**: "CCO Weekly Surveillance Briefing"
 
 | Tab | Sheet ID | Visuals | Snowflake Source |
@@ -242,7 +242,7 @@ One governed data platform.
 
 ### Amazon Q Topic (✅ Deployed)
 
-**Topic ID**: `crypto-surveillance-topic`
+**Topic ID**: `<TOPIC_ID>`
 **Topic Name**: "Crypto Surveillance"
 **Datasets**: All 5 (KRI Summary, Alert Volume, Case SLA, Entity Risk, On-Chain Flows)
 **Total Columns**: 37 with NL synonyms
