@@ -139,7 +139,7 @@ Expected: raw_trades ~5K (quick) or ~50K (full), alerts > 50, cases > 5.
 
 ## SE Demo Account Notes
 
-- **Network policy**: `00_setup.sql` has a commented-out `QUICKSIGHT_NETWORK_POLICY`. If your demo account has an account-level network policy blocking external IPs, uncomment and adjust the IP range for your QuickSight region (us-west-2: `54.70.204.128/27`). User-level policies override account-level.
+- **Network policy**: `00_setup.sql` has a commented-out `QUICKSIGHT_NETWORK_POLICY`. If your demo account has an account-level network policy blocking external IPs, uncomment and set the IP range for your QuickSight region (see [AWS docs](https://docs.aws.amazon.com/quicksight/latest/user/regions.html)). User-level policies override account-level.
 - **QUICKSIGHT_SVC**: Uses `TYPE = LEGACY_SERVICE` to avoid MFA. Change the password in both `00_setup.sql` and the QuickSight data source config.
 - **Marketplace data**: Script assumes `SNOWFLAKE_PUBLIC_DATA_FREE` is provisioned. Most demo accounts have this pre-installed.
 - **Bedrock**: Requires valid AWS credentials in `BEDROCK_SECRET`. Without them, use the fallback SAR narrative in `demo/sample_sar_narrative.md`.

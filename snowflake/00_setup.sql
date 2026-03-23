@@ -141,13 +141,10 @@ GRANT USAGE ON WAREHOUSE WH_SURVEILLANCE TO ROLE SURVEILLANCE_ANALYST;
 -- IPs, you need a USER-LEVEL network policy on QUICKSIGHT_SVC to allow
 -- QuickSight to connect. User-level policies override account-level ones.
 --
--- Uncomment and adjust the ALLOWED_IP_LIST for your QuickSight region:
---   us-west-2:  54.70.204.128/27
---   us-east-1:  52.23.63.224/27
---   eu-west-1:  54.76.254.0/27
---   Full list:  https://docs.aws.amazon.com/quicksight/latest/user/regions.html
+-- Look up the QuickSight IP ranges for your AWS region:
+--   https://docs.aws.amazon.com/quicksight/latest/user/regions.html
 --
 -- CREATE NETWORK POLICY IF NOT EXISTS QUICKSIGHT_NETWORK_POLICY
---     ALLOWED_IP_LIST = ('54.70.204.128/27')
+--     ALLOWED_IP_LIST = ('<QUICKSIGHT_REGION_IP_CIDR>')
 --     COMMENT = 'Allow Amazon QuickSight to connect (adjust IP for your region)';
 -- ALTER USER QUICKSIGHT_SVC SET NETWORK_POLICY = QUICKSIGHT_NETWORK_POLICY;
