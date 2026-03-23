@@ -162,3 +162,11 @@ Expected: raw_trades ~5K (quick) or ~50K (full), alerts > 50, cases > 5.
 |---|---|---|
 | `demo/demo_video_script.md` | 2–3 min | Recorded video walkthrough |
 | `demo/demo_runbook.md` | 5–7 min | Live booth demo |
+
+---
+
+## Legal
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
+
+This is a personal project and is **not an official Snowflake offering**. It comes with **no support or warranty**. Use it at your own risk. Snowflake has no obligation to maintain, update, or support this code. Do not use this code in production without thorough review and testing.
