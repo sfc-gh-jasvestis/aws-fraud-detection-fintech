@@ -112,7 +112,7 @@ Expected: raw_trades ~50K, alerts > 50, cases > 5.
 
 | Dashboard | URL |
 |---|---|
-| CCO Weekly Surveillance Briefing (Unified) | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/crypto-cco-surveillance-briefing` |
+| CCO Weekly Surveillance Briefing (Unified) | `https://us-west-2.quicksight.aws.amazon.com/sn/dashboards/<DASHBOARD_ID>` |
 
 QuickSight connects to these Snowflake views via DIRECT_QUERY (QUICKSIGHT_SVC user, SURVEILLANCE_ANALYST role):
 - `ANALYTICS.VW_KRIS` (KRI Headlines tab)
@@ -121,7 +121,7 @@ QuickSight connects to these Snowflake views via DIRECT_QUERY (QUICKSIGHT_SVC us
 - `ANALYTICS.VW_QUICKSIGHT_ENTITY_HEATMAP` (Entity Risk tab)
 - `ANALYTICS.VW_QUICKSIGHT_ONCHAIN_FLOWS` (On-Chain Flows tab)
 
-Amazon Q Topic: `crypto-surveillance-topic` (5 datasets, 37 columns with NL synonyms)
+Amazon Q Topic: `<TOPIC_ID>` (5 datasets, 37 columns with NL synonyms)
 
 ---
 

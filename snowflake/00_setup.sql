@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Phase 1: Snowflake Foundations
 -- File: 00_setup.sql
--- Account: demo43  |  AWS Account: 018437500440  |  Region: us-west-2
+-- Account: <SF_CONNECTION>  |  AWS Account: <AWS_ACCOUNT_ID>  |  Region: us-west-2
 -- Run as: ACCOUNTADMIN or SYSADMIN with USERADMIN grant
 -- =============================================================================
 
@@ -126,7 +126,7 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE_PUBLIC_DATA_FREE
 -- Used by Amazon QuickSight DIRECT_QUERY data source (PASSWORD auth).
 -- Password must match the QuickSight data source credential configuration.
 CREATE USER IF NOT EXISTS QUICKSIGHT_SVC
-    PASSWORD = 'QsSnow2026!Crypto#Svc'
+    PASSWORD = '<CHANGE_ME_QUICKSIGHT_SVC_PASSWORD>'
     DEFAULT_ROLE = SURVEILLANCE_ANALYST
     DEFAULT_WAREHOUSE = WH_SURVEILLANCE
     DEFAULT_NAMESPACE = CRYPTO_SURVEILLANCE.ANALYTICS
