@@ -137,16 +137,6 @@ Expected: raw_trades ~5K (quick) or ~50K (full), alerts > 50, cases > 5.
 
 ---
 
-## Key Lessons Learned
-
-- **QuickSight DIRECT_QUERY** has ~15 min server-side cache. Use SQL comment changes (`/* qs-refresh-vN */`) to bust cache.
-- **Row Access Policies** affect aggregate views (KRI counts). Include dashboard service roles in the policy.
-- **User-level network policies** override account-level policies for specific users.
-- **Amazon Q Topics** answer data questions but not causal "why" questions.
-- **Never round-trip QuickSight dashboard definitions** (describe → update) — causes silent SQL exceptions.
-
----
-
 ## Demo Scripts
 
 | Script | Duration | Audience |
