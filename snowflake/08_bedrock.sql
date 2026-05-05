@@ -2,7 +2,7 @@
 -- Phase 7: Bedrock Investigator Copilot
 -- File: 08_bedrock.sql
 -- Implements SP_GENERATE_CASE_NARRATIVE using Snowpark External Access
--- to call Amazon Bedrock (Claude Sonnet 4) via the Converse API.
+-- to call Amazon Bedrock (Claude Sonnet 4.5) via the Converse API.
 -- Pre-requisites: 01_integrations.sql (BEDROCK_EXTERNAL_ACCESS integration)
 -- =============================================================================
 
@@ -30,7 +30,7 @@ USE WAREHOUSE WH_SURVEILLANCE;
 --   5. PARSE_JSON is not supported in VALUES clause — use INSERT...SELECT
 CREATE OR REPLACE PROCEDURE CRYPTO_SURVEILLANCE.ANALYTICS.SP_GENERATE_CASE_NARRATIVE(
     P_CASE_ID   STRING,
-    P_MODEL_ID  STRING DEFAULT 'us.anthropic.claude-sonnet-4-20250514-v1:0'
+    P_MODEL_ID  STRING DEFAULT 'us.anthropic.claude-sonnet-4-5-20250514-v1:0'
 )
 RETURNS VARIANT
 LANGUAGE PYTHON
@@ -212,7 +212,7 @@ def call_bedrock(model_id, prompt):
     return json.loads(text)
 
 
-def generate_narrative(snowpark_session, p_case_id, p_model_id="us.anthropic.claude-sonnet-4-20250514-v1:0"):
+def generate_narrative(snowpark_session, p_case_id, p_model_id="us.anthropic.claude-sonnet-4-5-20250514-v1:0"):
     try:
         ctx = fetch_case_context(snowpark_session, p_case_id)
         prompt = build_prompt(ctx)

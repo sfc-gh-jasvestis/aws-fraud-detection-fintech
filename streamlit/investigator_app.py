@@ -31,9 +31,15 @@ st.markdown("""
         background: linear-gradient(135deg, #1a1f3a 0%, #29B5E8 100%);
         padding: 1.5rem 2rem;
         border-radius: 8px;
-        color: white;
+        color: white !important;
         margin-bottom: 1.5rem;
     }
+    .main-header h2, .main-header p {
+        color: white !important;
+        margin: 0;
+    }
+    .main-header h2 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .main-header p { opacity: 0.9; font-size: 0.95rem; }
     .severity-critical { color: #FF4B4B; font-weight: bold; }
     .severity-high     { color: #FF8C00; font-weight: bold; }
     .severity-medium   { color: #FFA500; }
@@ -53,7 +59,7 @@ st.markdown("""
 st.markdown("""
 <div class="main-header">
     <h2>🔍 Digital Asset Market Surveillance</h2>
-    <p>Investigator Copilot | Powered by Snowflake + Amazon Bedrock</p>
+    <p>Investigator Copilot | Powered by Snowflake AI Data Cloud</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -188,7 +194,7 @@ def call_bedrock_copilot(case_id: str) -> dict:
     result = session.call(
         "CRYPTO_SURVEILLANCE.ANALYTICS.SP_GENERATE_CASE_NARRATIVE",
         case_id,
-        "us.anthropic.claude-sonnet-4-20250514-v1:0"
+        "us.anthropic.claude-sonnet-4-5-20250514-v1:0"
     )
     if isinstance(result, str):
         return json.loads(result)
@@ -353,7 +359,7 @@ if not case_id:
                     index="ALERT_TYPE", columns="SEVERITY", values="CNT", fill_value=0
                 )
                 sev_colors = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
-                st.bar_chart(pivot, color=[sev_colors.get(c, "#888888") for c in pivot.columns])
+                st.bar_chart(pivot)
         with a_col2:
             st.markdown("**Daily Alert Volume**")
             if not by_day_df.empty:
@@ -361,7 +367,7 @@ if not case_id:
                     index="ALERT_DATE", columns="SEVERITY", values="CNT", fill_value=0
                 )
                 sev_colors_day = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
-                st.area_chart(pivot_day, color=[sev_colors_day.get(c, "#888888") for c in pivot_day.columns])
+                st.area_chart(pivot_day)
 
 else:
     detail = get_case_detail(case_id)
