@@ -194,7 +194,6 @@ def call_bedrock_copilot(case_id: str) -> dict:
     result = session.call(
         "CRYPTO_SURVEILLANCE.ANALYTICS.SP_GENERATE_CASE_NARRATIVE",
         case_id,
-        "us.anthropic.claude-sonnet-4-5-20250514-v1:0"
     )
     if isinstance(result, str):
         return json.loads(result)
@@ -279,7 +278,7 @@ with st.sidebar:
     st.divider()
     if st.button("Refresh Data", use_container_width=True):
         st.cache_data.clear()
-        st.rerun()
+        (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
     st.divider()
     st.caption("Demo Controls")
     if st.button("Pre-warm Bedrock", use_container_width=True,
@@ -393,19 +392,19 @@ else:
         with col_a:
             if st.button("Start Review", use_container_width=True):
                 update_case_state(case_id, "IN_REVIEW", analyst_name)
-                st.rerun()
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
         with col_b:
             if st.button("Escalate", use_container_width=True):
                 update_case_state(case_id, "ESCALATED", analyst_name)
-                st.rerun()
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
         with col_c:
             if st.button("Close — TP", use_container_width=True):
                 update_case_state(case_id, "CLOSED", analyst_name)
-                st.rerun()
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
         with col_d:
             if st.button("False Positive", use_container_width=True):
                 update_case_state(case_id, "FALSE_POSITIVE", analyst_name)
-                st.rerun()
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
 
         st.divider()
 
