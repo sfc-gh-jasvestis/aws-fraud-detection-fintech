@@ -4,4 +4,4 @@ channels:
 dependencies:
   - pandas
   - snowflake-snowpark-python
-  - plotly==5.24.1
+  - plotly
