@@ -215,23 +215,26 @@ def prewarm_bedrock_for_top_case() -> None:
 
 
 def update_case_state(case_id: str, new_state: str, analyst: str) -> None:
+    safe_id = (case_id or "").replace("'", "''")
+    safe_state = (new_state or "").replace("'", "''")
+    safe_analyst = (analyst or "Analyst").replace("'", "''")
     session.sql(f"""
         UPDATE CRYPTO_SURVEILLANCE.ANALYTICS.CASES
-        SET state = '{new_state}', assigned_to = '{analyst}',
+        SET state = '{safe_state}', assigned_to = '{safe_analyst}',
             updated_at = CURRENT_TIMESTAMP()
-        WHERE case_id = '{case_id}'
+        WHERE case_id = '{safe_id}'
     """).collect()
     session.sql(f"""
         UPDATE CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
-        SET status = '{new_state}', updated_at = CURRENT_TIMESTAMP()
-        WHERE case_id = '{case_id}'
+        SET status = '{safe_state}', updated_at = CURRENT_TIMESTAMP()
+        WHERE case_id = '{safe_id}'
     """).collect()
     session.sql(f"""
         INSERT INTO CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS
             (case_id, event_type, event_data, performed_by)
-        SELECT '{case_id}', 'STATE_CHANGE',
+        SELECT '{safe_id}', 'STATE_CHANGE',
                PARSE_JSON('{json.dumps({"new_state": new_state})}'),
-               '{analyst}'
+               '{safe_analyst}'
     """).collect()
     st.cache_data.clear()
 
