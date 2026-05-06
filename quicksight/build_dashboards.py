@@ -358,27 +358,62 @@ FROM INSURANCE_DEMO_DB.CURATED.CLAIMS""",
     },
     {
         "id": "crypto-surveillance", "name": "Crypto Surveillance",
-        "sql": """SELECT ALERT_ID, ALERT_TYPE, SEVERITY, STATUS,
-       DETECTED_AT::TIMESTAMP AS DETECTED_AT,
-       ML_FRAUD_PROBABILITY::FLOAT AS ML_FRAUD_PROBABILITY,
-       COMPOSITE_RISK_TIER, ENTITY_ID, REASON
-FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS""",
+        "sql": """WITH wallet_asset AS (
+  SELECT WALLET_ID, BASE_ASSET, SUM(QUOTE_QTY) NOTIONAL
+  FROM CRYPTO_SURVEILLANCE.HARMONISED.TRADES GROUP BY 1,2
+),
+top_asset AS (
+  SELECT WALLET_ID, BASE_ASSET, NOTIONAL FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY WALLET_ID ORDER BY NOTIONAL DESC) rn
+    FROM wallet_asset
+  ) WHERE rn=1
+)
+SELECT a.ALERT_ID, a.ALERT_TYPE, a.SEVERITY, a.STATUS,
+       a.DETECTED_AT::TIMESTAMP AS DETECTED_AT,
+       a.ML_FRAUD_PROBABILITY::FLOAT AS ML_FRAUD_PROBABILITY,
+       a.COMPOSITE_RISK_TIER, a.REASON,
+       COALESCE(e.FULL_NAME, 'Unknown') AS ENTITY_NAME,
+       COALESCE(e.COUNTRY_OF_RESIDENCE, 'Unknown') AS COUNTRY,
+       COALESCE(e.AML_RISK_RATING, 'UNRATED') AS AML_RISK_RATING,
+       COALESCE(e.KYC_TIER, 'UNKNOWN') AS KYC_TIER,
+       COALESCE(w.WALLET_ADDRESS, 'unknown') AS WALLET_ADDRESS,
+       COALESCE(w.CHAIN, 'unknown') AS CHAIN,
+       COALESCE(w.WALLET_TYPE, 'UNKNOWN') AS WALLET_TYPE,
+       CASE WHEN COALESCE(w.IS_MIXER, FALSE) THEN 'Yes' ELSE 'No' END AS IS_MIXER,
+       CASE WHEN COALESCE(w.IS_SANCTIONED, FALSE) THEN 'Yes' ELSE 'No' END AS IS_SANCTIONED,
+       w.RISK_SCORE::FLOAT AS WALLET_RISK_SCORE,
+       COALESCE(ta.BASE_ASSET, 'N/A') AS BASE_ASSET,
+       COALESCE(ta.NOTIONAL, 0)::FLOAT AS NOTIONAL_USD
+FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS a
+LEFT JOIN CRYPTO_SURVEILLANCE.HARMONISED.ENTITY e ON a.ENTITY_ID = e.ENTITY_ID
+LEFT JOIN CRYPTO_SURVEILLANCE.HARMONISED.WALLET w ON a.WALLET_ID = w.WALLET_ID
+LEFT JOIN top_asset ta ON a.WALLET_ID = ta.WALLET_ID""",
         "ds_id": "crypto-alerts",
         "ds_name": "Crypto: Alerts",
         "kpis": [
             {"label": "Total Alerts", "field": "ALERT_ID", "agg": "DISTINCT_COUNT", "type": "string"},
             {"label": "Critical", "field": "ALERT_ID", "agg": "DISTINCT_COUNT", "type": "string", "filter": ("SEVERITY", "CRITICAL")},
-            {"label": "In Review", "field": "ALERT_ID", "agg": "DISTINCT_COUNT", "type": "string", "filter": ("STATUS", "IN_REVIEW")},
-            {"label": "Avg Fraud Probability", "field": "ML_FRAUD_PROBABILITY", "agg": "AVERAGE", "type": "decimal"},
+            {"label": "Sanctioned Wallets", "field": "ALERT_ID", "agg": "DISTINCT_COUNT", "type": "string", "filter": ("IS_SANCTIONED", "Yes")},
+            {"label": "Notional at Risk $M", "field": "NOTIONAL_USD", "agg": "SUM", "type": "decimal", "scale": 1e6},
         ],
         "charts": [
+            {"type": "line", "title": "Alerts Over Time",
+             "x": ("DETECTED_AT", "datetime"), "y": ("ALERT_ID", "string", "DISTINCT_COUNT"),
+             "color": ("SEVERITY", "string"), "granularity": "DAY"},
             {"type": "bar", "title": "Alerts by Type",
              "x": ("ALERT_TYPE", "string"), "y": ("ALERT_ID", "string", "DISTINCT_COUNT"),
              "color": ("SEVERITY", "string")},
+            {"type": "bar", "title": "Top Tokens by Notional ($)",
+             "x": ("BASE_ASSET", "string"), "y": ("NOTIONAL_USD", "decimal", "SUM")},
+            {"type": "donut", "title": "Wallet Risk Mix",
+             "category": ("WALLET_TYPE", "string"), "value": ("ALERT_ID", "string", "DISTINCT_COUNT")},
+            {"type": "bar", "title": "Alerts by Country (top 10)",
+             "x": ("COUNTRY", "string"), "y": ("ALERT_ID", "string", "DISTINCT_COUNT"),
+             "color": ("AML_RISK_RATING", "string")},
             {"type": "donut", "title": "Status Distribution",
              "category": ("STATUS", "string"), "value": ("ALERT_ID", "string", "DISTINCT_COUNT")},
         ],
-        "q": ["How many critical alerts?", "Which alert type is most common?", "How many open cases?"],
+        "q": ["Which token has the most alerts?", "How many sanctioned wallets?", "What is the notional at risk by country?"],
         "topic_id": "crypto-surveillance-q", "topic_name": "Crypto Surveillance",
         "dashboard_id": "crypto-surveillance-dashboard",
         "dashboard_name": "Crypto Surveillance",
@@ -528,24 +563,38 @@ def build_dataset(d):
             cols.append(col_def(name, type_))
             seen.add(name)
 
+    def map_type(hint):
+        if hint == "decimal":
+            return "DECIMAL"
+        if hint == "integer":
+            return "INTEGER"
+        if hint == "datetime":
+            return "DATETIME"
+        if hint == "boolean":
+            return "BOOLEAN"
+        return "STRING"
+
     for k in d["kpis"]:
         if "field" in k:
-            t = k.get("type", "string")
-            qst = "DECIMAL" if t == "decimal" else ("INTEGER" if t == "integer" else "STRING")
-            add(k["field"], qst)
+            add(k["field"], map_type(k.get("type", "string")))
         if "filter" in k:
-            add(k["filter"][0], "STRING")
+            # If the filter value is "true"/"false", treat the column as BOOLEAN
+            fcol, fval = k["filter"]
+            if str(fval).lower() in ("true", "false"):
+                add(fcol, "BOOLEAN")
+            else:
+                add(fcol, "STRING")
         if "filter_bool" in k:
-            add(k["filter_bool"][0], "BOOLEAN" if False else "STRING")
+            add(k["filter_bool"][0], "BOOLEAN")
     for c in d["charts"]:
-        if c["type"] == "bar":
-            add(c["x"][0], "STRING" if c["x"][1] == "string" else "DECIMAL")
-            add(c["y"][0], "STRING" if c["y"][1] == "string" else "DECIMAL")
+        if c["type"] in ("bar", "line"):
+            add(c["x"][0], map_type(c["x"][1]))
+            add(c["y"][0], map_type(c["y"][1]))
             if "color" in c:
-                add(c["color"][0], "STRING" if c["color"][1] == "string" else "DECIMAL")
+                add(c["color"][0], map_type(c["color"][1]))
         else:  # donut
-            add(c["category"][0], "STRING" if c["category"][1] == "string" else "DECIMAL")
-            add(c["value"][0], "STRING" if c["value"][1] == "string" else "DECIMAL")
+            add(c["category"][0], map_type(c["category"][1]))
+            add(c["value"][0], map_type(c["value"][1]))
 
     physical = {
         "PhysicalTableMap": {
@@ -669,6 +718,47 @@ def bar_visual(d, idx, c):
     }
 
 
+def line_visual(d, idx, c):
+    vid = f"line-{d['id']}-{idx}"
+    ds_id = d["ds_id"]
+    cat_col = c["x"][0]
+    cat = {
+        "DateDimensionField": {
+            "FieldId": f"x-{vid}",
+            "Column": {"DataSetIdentifier": ds_id, "ColumnName": cat_col},
+            "DateGranularity": c.get("granularity", "DAY"),
+        }
+    }
+    if len(c["y"]) == 3 and c["y"][2] == "DISTINCT_COUNT":
+        val = field_well_dim_count(f"y-{vid}", ds_id, c["y"][0])
+    else:
+        agg = c["y"][2] if len(c["y"]) == 3 else "SUM"
+        val = field_well_meas(f"y-{vid}", ds_id, c["y"][0], agg)
+    field_wells = {
+        "LineChartAggregatedFieldWells": {
+            "Category": [cat],
+            "Values": [val],
+        }
+    }
+    if "color" in c:
+        field_wells["LineChartAggregatedFieldWells"]["Colors"] = [
+            field_well_dim(f"c-{vid}", ds_id, c["color"][0])
+        ]
+    return {
+        "LineChartVisual": {
+            "VisualId": vid,
+            "Title": {"Visibility": "VISIBLE", "FormatText": {"PlainText": c["title"]}},
+            "Subtitle": {"Visibility": "HIDDEN"},
+            "ChartConfiguration": {
+                "FieldWells": field_wells,
+                "Legend": {"Visibility": "VISIBLE" if "color" in c else "HIDDEN"},
+                "DataLabels": {"Visibility": "HIDDEN"},
+            },
+            "Actions": [],
+        }
+    }
+
+
 def donut_visual(d, idx, c):
     vid = f"pie-{d['id']}-{idx}"
     ds_id = d["ds_id"]
@@ -752,18 +842,22 @@ def build_dashboard_definition(d, ds_arn):
                 "CrossDataset": "SINGLE_DATASET"
             })
 
-    # 2 charts row 2
+    # charts: 2-column grid (each 18 wide x 14 tall), wraps to next row after 2
     for i, c in enumerate(d["charts"]):
         if c["type"] == "bar":
             v = bar_visual(d, i, c)
+        elif c["type"] == "line":
+            v = line_visual(d, i, c)
         else:
             v = donut_visual(d, i, c)
         vid = list(v.values())[0]["VisualId"]
         visuals.append(v)
+        col_idx = (i % 2) * 18
+        row_idx = 5 + (i // 2) * 14
         layout_elements.append({
             "ElementId": vid, "ElementType": "VISUAL",
-            "ColumnIndex": i * 18, "ColumnSpan": 18,
-            "RowIndex": 5, "RowSpan": 14,
+            "ColumnIndex": col_idx, "ColumnSpan": 18,
+            "RowIndex": row_idx, "RowSpan": 14,
         })
 
     sheet = {
