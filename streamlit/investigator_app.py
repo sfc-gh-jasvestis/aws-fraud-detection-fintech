@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 import streamlit as st
+import _snowflake
 from snowflake.snowpark.context import get_active_session
 
 session = get_active_session()
@@ -62,6 +63,191 @@ st.markdown("""
     <p>Investigator Copilot | Powered by Snowflake AI Data Cloud</p>
 </div>
 """, unsafe_allow_html=True)
+
+
+# ─── Page router ──────────────────────────────────────────────────────────────
+page = st.sidebar.radio(
+    "Section",
+    ["Cases", "Detection Patterns", "Ask the Data"],
+    label_visibility="collapsed",
+)
+st.sidebar.divider()
+
+
+def _df(sql: str) -> pd.DataFrame:
+    return session.sql(sql).to_pandas()
+
+
+SEV_COLORS = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
+
+
+@st.cache_data(ttl=120)
+def load_detection(view_name: str) -> pd.DataFrame:
+    return _df(f"SELECT * FROM CRYPTO_SURVEILLANCE.ANALYTICS.{view_name} ORDER BY DETECTED_AT DESC LIMIT 500")
+
+
+if page == "Detection Patterns":
+    st.subheader("Detection Patterns")
+    st.caption("Six rule + ML detection signals across trading and on-chain activity")
+
+    tab_m, tab_w, tab_p, tab_s, tab_sc, tab_a = st.tabs([
+        "Mixer", "Wash Trade", "Pump & Dump", "Structuring", "Sanctioned", "Cross-Exchange"
+    ])
+
+    with tab_m:
+        df = load_detection("VW_MIXER_EXPOSURE")
+        st.markdown("Entities transacting with known mixer wallets (Tornado Cash, etc.)")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Entities", df["ENTITY_ID"].nunique() if not df.empty else 0)
+        c2.metric("Total Mixer Volume", f"{df['MIXER_VOLUME'].astype(float).sum():,.0f}" if not df.empty else 0)
+        c3.metric("Critical", int((df["SEVERITY"] == "CRITICAL").sum()) if not df.empty else 0)
+        if not df.empty:
+            top = df.nlargest(15, "MIXER_VOLUME")
+            import plotly.express as px
+            fig = px.bar(top, x="MIXER_VOLUME", y="ENTITY_ID", orientation="h",
+                         color="SEVERITY", color_discrete_map=SEV_COLORS, title="Top 15 by Mixer Volume")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No mixer exposure detected.")
+
+    with tab_w:
+        df = load_detection("VW_WASH_TRADE_PATTERNS")
+        st.markdown("Buy/sell pairs at near-identical price within 10 minutes (likely self-trading)")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Wash Pairs", len(df))
+        c2.metric("Accounts", df["ACCOUNT_ID"].nunique() if not df.empty else 0)
+        c3.metric("Pairs", df["TRADING_PAIR"].nunique() if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            top_pair = df["TRADING_PAIR"].value_counts().reset_index().head(15)
+            top_pair.columns = ["TRADING_PAIR", "COUNT"]
+            fig = px.bar(top_pair, x="COUNT", y="TRADING_PAIR", orientation="h",
+                         color="COUNT", color_continuous_scale="Reds",
+                         title="Top 15 Trading Pairs with Wash Activity")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"},
+                              coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No wash trades detected.")
+
+    with tab_p:
+        df = load_detection("VW_PUMP_AND_DUMP_CANDIDATES")
+        st.markdown("Coordinated price spikes vs marketplace reference price")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Candidates", len(df))
+        if not df.empty:
+            c2.metric("Max Spike %", f"{float(df['PRICE_SPIKE_PCT'].max()):.1f}%")
+            c3.metric("Max Deviation %", f"{float(df['MARKETPLACE_PRICE_DEVIATION_PCT'].abs().max()):.1f}%")
+            import plotly.express as px
+            fig = px.scatter(df, x="WINDOW_VOLUME", y="PRICE_SPIKE_PCT", color="SEVERITY",
+                             color_discrete_map=SEV_COLORS, hover_data=["TRADING_PAIR", "ACCOUNT_ID"],
+                             title="Price Spike vs Window Volume", size_max=15)
+            fig.update_layout(height=400, margin=dict(t=40, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No pump-and-dump candidates.")
+
+    with tab_s:
+        df = load_detection("VW_STRUCTURING_PATTERNS")
+        st.markdown("Below-threshold transaction splitting (sub-$10k repeat trades)")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Patterns", len(df))
+        c2.metric("Accounts", df["ACCOUNT_ID"].nunique() if not df.empty else 0)
+        c3.metric("Total Below-Threshold $", f"{float(df['BELOW_THRESHOLD_VOLUME'].sum()):,.0f}" if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            top = df.nlargest(15, "BELOW_THRESHOLD_COUNT")
+            fig = px.bar(top, x="BELOW_THRESHOLD_COUNT", y="ACCOUNT_ID", orientation="h",
+                         color="SEVERITY", color_discrete_map=SEV_COLORS,
+                         title="Top 15 Accounts by Below-Threshold Trade Count")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No structuring patterns.")
+
+    with tab_sc:
+        df = load_detection("VW_SANCTIONED_COUNTERPARTY_EXPOSURE")
+        st.markdown("On-chain transfers touching OFAC/UN sanctioned addresses")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Hits", len(df))
+        c2.metric("Entities", df["ENTITY_ID"].nunique() if not df.empty else 0)
+        c3.metric("Tokens", df["TOKEN_SYMBOL"].nunique() if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            tok = df.groupby("TOKEN_SYMBOL")["VALUE_DECIMAL"].sum().reset_index().sort_values("VALUE_DECIMAL", ascending=False).head(10)
+            fig = px.bar(tok, x="TOKEN_SYMBOL", y="VALUE_DECIMAL", color="VALUE_DECIMAL",
+                         color_continuous_scale="Reds", title="Top Tokens — Sanctioned Counterparty Volume")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No sanctioned counterparty exposure.")
+
+    with tab_a:
+        df = load_detection("VW_CROSS_EXCHANGE_ARBITRAGE")
+        st.markdown("Trades across multiple venues with significant price spreads")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Events", len(df))
+        c2.metric("Pairs", df["TRADING_PAIR"].nunique() if not df.empty else 0)
+        c3.metric("Max Spread", f"{float(df['PRICE_SPREAD'].max()):.4f}" if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            top = df.nlargest(15, "PRICE_SPREAD")
+            fig = px.bar(top, x="PRICE_SPREAD", y="TRADING_PAIR", orientation="h",
+                         color="VENUES_COUNT", color_continuous_scale="Blues",
+                         title="Top 15 Pairs by Price Spread", hover_data=["VENUES", "TOTAL_VOLUME"])
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No cross-exchange arbitrage detected.")
+
+    st.stop()
+
+
+if page == "Ask the Data":
+    st.subheader("Ask the Data")
+    st.caption("Natural-language questions powered by Cortex Analyst over the Surveillance semantic view")
+    samples = [
+        "Which entities have the most mixer exposure?",
+        "Show me wash trade patterns this week",
+        "What is the total notional in sanctioned counterparty alerts?",
+    ]
+    sel = st.selectbox("Sample questions:", [""] + samples)
+    user_q = st.text_input("Or type your question:", value=sel)
+    if user_q:
+        with st.spinner("Cortex Analyst..."):
+            try:
+                body = {
+                    "messages": [{"role": "user", "content": [{"type": "text", "text": user_q}]}],
+                    "semantic_view": "CRYPTO_SURVEILLANCE.ANALYTICS.SURVEILLANCE_SEMANTIC_VIEW",
+                }
+                resp = _snowflake.send_snow_api_request(
+                    "POST", "/api/v2/cortex/analyst/message", {}, {}, body, None, 30000
+                )
+                parsed = json.loads(resp["content"])
+                if resp["status"] < 400:
+                    for block in parsed.get("message", {}).get("content", []):
+                        if block.get("type") == "text":
+                            st.markdown(block.get("text", ""))
+                        elif block.get("type") == "sql":
+                            sql = block.get("statement", "")
+                            with st.expander("SQL"):
+                                st.code(sql, language="sql")
+                            try:
+                                st.dataframe(session.sql(sql).to_pandas(), use_container_width=True, hide_index=True)
+                            except Exception as e:
+                                st.error(f"Query error: {e}")
+                else:
+                    st.error(parsed)
+            except Exception as e:
+                st.error(f"Analyst error: {e}")
+    st.stop()
 
 
 # ─── Helper functions ─────────────────────────────────────────────────────────

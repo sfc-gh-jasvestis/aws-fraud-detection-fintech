@@ -10,7 +10,6 @@ entities:
     comment: "Investigator Copilot — Financial Crime Analytics"
     query_warehouse: WH_SURVEILLANCE
     main_file: investigator_app.py
-    pages_dir: pages/
     stage: CRYPTO_SURVEILLANCE.ANALYTICS.STREAMLIT_STAGE
     artifacts:
       - investigator_app.py
