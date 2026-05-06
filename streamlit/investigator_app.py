@@ -66,6 +66,7 @@ st.markdown("""
 
 
 # ─── Page router ──────────────────────────────────────────────────────────────
+st.sidebar.markdown("### Section")
 page = st.sidebar.radio(
     "Section",
     ["Cases", "Detection Patterns", "Ask the Data"],
