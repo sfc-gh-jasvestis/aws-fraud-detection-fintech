@@ -438,8 +438,7 @@ else:
                             .groupby("trade_date")["QUOTE_QTY"].sum()
                             .reset_index()
                         )
-                        st.line_chart(chart_data.set_index("trade_date")["QUOTE_QTY"],
-                                      color="#29B5E8")
+                        st.line_chart(chart_data.set_index("trade_date")["QUOTE_QTY"])
 
         with col_oc:
             with st.expander(f"On-Chain Activity (30d, {len(detail['onchain'])} rows)"):
