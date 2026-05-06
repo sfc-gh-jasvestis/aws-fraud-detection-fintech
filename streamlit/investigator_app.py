@@ -240,7 +240,7 @@ if page == "Ask the Data":
                             with st.expander("SQL"):
                                 st.code(sql, language="sql")
                             try:
-                                st.dataframe(session.sql(sql).to_pandas(), use_container_width=True, hide_index=True)
+                                st.dataframe(session.sql(sql).to_pandas(), use_container_width=True)
                             except Exception as e:
                                 st.error(f"Query error: {e}")
                 else:
