@@ -16,16 +16,24 @@
 
 ## Architecture
 
+A digital-asset market surveillance and financial-crime platform built on **Snowflake** (Snowpipe Streaming, Dynamic Tables, Cortex Analyst, External Access) and **AWS** (MSK, Kinesis, S3, AppFlow, Glue, Cognito, Bedrock Claude, QuickSight + Amazon Q). High-throughput trade data lands via MSK / Kinesis; Snowflake produces detection alerts and case features; Bedrock powers the investigator copilot.
+
+```mermaid
+flowchart LR
+    MSK[Amazon MSK + Kinesis] --> SPS[Snowpipe Streaming]
+    S3[Amazon S3 + AppFlow + Glue] --> SF[Snowflake RAW]
+    SPS --> SF
+    SF --> HARM[HARMONISED Dynamic Tables 1-10 min]
+    HARM --> FEAT[FEATURES Trade + Entity]
+    FEAT --> ANA[ANALYTICS scoring + detection rules + alerts + cases]
+    ANA --> EA[External Access SigV4]
+    EA --> BR[Amazon Bedrock Claude]
+    BR --> COP[Investigator copilot SAR / case narrative]
+    COG[Amazon Cognito] --> ST[Streamlit Investigator]
+    ANA --> ST
+    ANA --> QS[QuickSight DIRECT_QUERY + Amazon Q]
 ```
-AWS Data Plane                     Snowflake AI Data Cloud
-───────────────────                ──────────────────────────────────
-Amazon MSK / Kinesis       ──────▶ RAW (Snowpipe Streaming)
-Amazon S3                  ──────▶ HARMONISED (Dynamic Tables, 1-10 min lag)
-Amazon AppFlow / Glue              FEATURES (Trade + Entity features)
-Amazon Cognito                     ANALYTICS (ML scoring, detection rules, alerts, cases)
-Amazon Bedrock (Claude)    ◀─────▶ External Access (SigV4 → Converse API)
-Amazon QuickSight          ◀─────  Governed Views (DIRECT_QUERY via QUICKSIGHT_SVC)
-```
+
 
 | Layer | AWS | Snowflake |
 |---|---|---|
