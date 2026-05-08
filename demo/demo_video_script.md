@@ -196,18 +196,6 @@ FROM CRYPTO_SURVEILLANCE.HARMONISED.ENTITY LIMIT 5;
 
 **Screen**: Architecture diagram (full frame) → fade to title card:
 
-**Title Card** (3 seconds):
-```
-Digital Asset Market Surveillance
-Snowflake + AWS | Better Together
-
-Investigator: Streamlit in Snowflake
-Executive: Amazon QuickSight + Amazon Q
-One governed data platform.
-
-<YOUR_EMAIL>
-```
-
 ---
 
 ## Timing Summary
@@ -336,19 +324,6 @@ These are the executive talking points the CCO would deliver to the board using 
 | Question | Answer |
 |---|---|
 | "Why can't you do this with just AWS or just Snowflake?" | AWS gives MSK for streaming, S3 for scale, Bedrock for AI, QuickSight for the exec. Snowflake gives Dynamic Tables for zero-orchestration, Snowpark ML for in-platform scoring, Streamlit for the investigator, Horizon for governance. Neither alone covers both personas end-to-end. |
-
----
-
-## Recording Tips
-
-1. **Pre-run all queries** so results are cached — eliminates warehouse spin-up delay
-2. **Pre-warm Bedrock** using the sidebar button — the SAR narrative is cached for 10 minutes
-3. **QuickSight**: have the dashboard open on Tab 1 ("KRI Headlines") — click through tabs during recording
-4. **Pause 1 second** between tab transitions for viewer orientation
-5. **Keep mouse movements slow** and deliberate — the viewer is reading
-6. **Snowsight**: use dark mode for better contrast on recording
-7. **Screen zoom**: 110-125% in browser for readability at 1080p
-8. **Persona transitions**: pause briefly and say "now let's switch to the [persona]'s view" for clarity
 
 ---
 
