@@ -12,8 +12,9 @@ import subprocess
 import sys
 import uuid
 import argparse
+import os
 
-ACCOUNT = "__AWS_ACCOUNT_ID__"
+ACCOUNT = os.environ["AWS_ACCOUNT_ID"]
 REGION = "us-west-2"
 DS_ARN = f"arn:aws:quicksight:{REGION}:{ACCOUNT}:datasource/snowflake-demos-ds"
 THEME_ARN = f"arn:aws:quicksight:{REGION}:{ACCOUNT}:theme/snowflake-demo-theme"
