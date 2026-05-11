@@ -35,8 +35,15 @@
 !echo '===== [8/9] 07_cases.sql — Case management + QuickSight views =====';
 !source snowflake/07_cases.sql;
 
-!echo '===== [9/9] 08_bedrock.sql — Bedrock narrative integration =====';
+!echo '===== [9/11] 08_bedrock.sql — Bedrock narrative integration =====';
 !source snowflake/08_bedrock.sql;
 
+!echo '===== [10/11] 08b_cortex_narrative.sql — Cortex fallback narrative SP =====';
+!source snowflake/08b_cortex_narrative.sql;
+
+!echo '===== [11/11] 09_semantic_view.sql — Cortex Analyst semantic view =====';
+!source snowflake/09_semantic_view.sql;
+
 !echo '===== BUILD COMPLETE =====';
+!echo 'Note: If marketplace data is unavailable, also run: snowflake/03b_marketplace_stub.sql';
 !echo 'Next: python scripts/generate_synthetic_data.py --seed-and-refresh --quick';

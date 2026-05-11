@@ -34,6 +34,30 @@ flowchart LR
     ANA --> QS[QuickSight DIRECT_QUERY + Amazon Q]
 ```
 
+## Snowflake Capabilities
+
+| Capability | Implementation |
+|-----------|---------------|
+| Dynamic Tables | 4 HARMONISED + 2 FEATURES + ALERT_SCORES (7-layer pipeline) |
+| Snowpipe Streaming | High-throughput trade ingestion from MSK/Kinesis |
+| Cortex Agent | SurveillanceAnalyst + data_to_chart tools |
+| Semantic View | Structured analytics over alerts, cases, entities |
+| Streamlit | Investigator Copilot: case triage, SAR drafts, entity profiles |
+| External Access | SigV4-signed calls to Amazon Bedrock for case narratives |
+| Data Governance | Horizon tags, masking policies, row access policies on PII |
+
+## AWS Services
+
+| Service | Role in Demo |
+|---------|-------------|
+| Amazon MSK / Kinesis | High-throughput trade data ingestion |
+| Amazon S3 | Batch data landing via AppFlow and Glue |
+| AWS Glue | Data catalog and ETL for reference data |
+| Amazon Bedrock | Claude-powered SAR narrative generation |
+| Amazon Cognito | User authentication for Streamlit |
+| Amazon QuickSight | CCO dashboard: alert trends, risk heatmaps, case SLA |
+| Amazon Q | Natural language KRI/KPI analytics for executives |
+
 
 | Layer | AWS | Snowflake |
 |---|---|---|
@@ -50,30 +74,36 @@ flowchart LR
 
 ```
 aws-fraud-detection-fintech/
-├── snowflake/                        # Snowflake SQL (9 scripts, 00–08)
+├── snowflake/                        # Snowflake SQL (11 scripts, 00–09)
 │   ├── 00_setup.sql                  # DB, schemas, roles, warehouses, QuickSight SVC user
 │   ├── 01_integrations.sql           # S3 storage integration, Bedrock External Access
 │   ├── 02_raw_tables.sql             # 6 RAW tables (VARIANT schema-on-read)
 │   ├── 03_harmonised.sql             # 4 Dynamic Tables + synthetic reference views
+│   ├── 03b_marketplace_stub.sql      # Zero-row stub if marketplace data unavailable
 │   ├── 04_entity_graph.sql           # Entity/Wallet graph + governance (tags, masking, RAP)
 │   ├── 05_features.sql               # TRADE_FEATURES + ENTITY_FEATURES Dynamic Tables
 │   ├── 06_analytics.sql              # ML scoring UDF + 6 detection rules + ALERTS
 │   ├── 07_cases.sql                  # Cases + lifecycle SPs + QuickSight views + KRI/KPI
 │   ├── 08_bedrock.sql                # SP_GENERATE_CASE_NARRATIVE (Bedrock Claude via SigV4)
+│   ├── 08b_cortex_narrative.sql      # SP_GENERATE_CASE_NARRATIVE (Cortex fallback)
+│   ├── 09_semantic_view.sql          # Cortex Analyst semantic view
 │   └── demo_build_all.sql            # Single build orchestrator (SnowSQL !source)
-├── sql/
-│   └── demo/
-│       └── demo_seed.sql             # Demo reset: truncate + reload + refresh
 ├── scripts/
-│   └── generate_synthetic_data.py    # Synthetic data generator (--quick, --seed-and-refresh)
+│   ├── generate_synthetic_data.py    # Synthetic data generator (--quick, --seed-and-refresh)
+│   ├── settings.py                   # Configuration (connection, data params, AWS)
+│   └── __init__.py
 ├── streamlit/
 │   └── investigator_app.py           # Streamlit in Snowflake — Investigator Copilot
+├── quicksight/
+│   ├── build_dashboards.py           # QuickSight dataset + dashboard builder
+│   └── theme.json                    # Snowflake-branded theme
+├── aws/
+│   └── architecture.drawio           # Architecture diagram (export to PNG/SVG)
 ├── demo/
 │   ├── demo_runbook.md               # 5–7 min live demo script
 │   ├── demo_video_script.md          # 2–3 min recorded demo narrative
 │   └── sample_sar_narrative.md       # Bedrock fallback SAR narrative
-├── architecture/
-│   └── architecture.drawio           # Architecture diagram (export to PNG/SVG)
+├── requirements.txt                  # Python dependencies
 ├── .gitignore
 └── README.md
 ```
@@ -139,9 +169,13 @@ Expected: raw_trades ~5K (quick) or ~50K (full), alerts > 50, cases > 5.
 | 03 | `03_harmonised.sql` | 4 Dynamic Tables + synthetic price/wallet/marketplace views |
 | 04 | `04_entity_graph.sql` | ENTITY, WALLET, ENTITY_RELATION + governance (tags, masking, RAP) |
 | 05 | `05_features.sql` | TRADE_FEATURES + ENTITY_FEATURES Dynamic Tables |
-| 06 | `06_analytics.sql` | ML scoring UDF (XGBoost) + ALERT_SCORES DT + 6 detection rules + ALERTS |
+| 06 | `06_analytics.sql` | ML scoring UDF (XGBoost heuristic*) + ALERT_SCORES DT + 6 detection rules + ALERTS |
 | 07 | `07_cases.sql` | CASES + case lifecycle SPs + QuickSight views + KRI/KPI views |
 | 08 | `08_bedrock.sql` | SP_GENERATE_CASE_NARRATIVE (Bedrock Claude via SigV4) |
+| 08b | `08b_cortex_narrative.sql` | SP_GENERATE_CASE_NARRATIVE (Cortex fallback — no AWS required) |
+| 09 | `09_semantic_view.sql` | Cortex Analyst semantic view for natural-language queries |
+
+> *The XGBoost UDF (`FRAUD_RISK_SCORE`) uses a heuristic scoring formula for demo portability. Replace with a trained model via `_cache['model']` for production use.
 
 ---
 

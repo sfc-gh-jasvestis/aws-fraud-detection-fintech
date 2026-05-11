@@ -280,12 +280,18 @@ def get_kri_metrics() -> dict:
 def get_open_cases(priority_filter: str, state_filter: str) -> pd.DataFrame:
     filters = []
     if priority_filter != "All":
-        filters.append(f"c.priority = '{priority_filter}'")
+        filters.append("c.priority = ?")
     if state_filter != "All":
-        filters.append(f"c.state = '{state_filter}'")
+        filters.append("c.state = ?")
     where = "WHERE " + " AND ".join(filters) if filters else ""
 
-    return session.sql(f"""
+    params = []
+    if priority_filter != "All":
+        params.append(priority_filter)
+    if state_filter != "All":
+        params.append(state_filter)
+
+    query = f"""
         SELECT
             c.case_id,
             c.case_ref,
@@ -313,39 +319,40 @@ def get_open_cases(priority_filter: str, state_filter: str) -> pd.DataFrame:
             END,
             c.created_at DESC
         LIMIT 200
-    """).to_pandas()
+    """
+    return session.sql(query, params=params).to_pandas()
 
 
 @st.cache_data(ttl=30)
 def get_case_detail(case_id: str) -> dict:
-    case = session.sql(f"""
+    case = session.sql("""
         SELECT c.*, e.full_name, e.email, e.aml_risk_rating,
                e.kyc_tier, e.pep_flag, e.sanctions_flag, e.account_type,
                e.onboarded_at
         FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASES c
         LEFT JOIN CRYPTO_SURVEILLANCE.HARMONISED.ENTITY e ON c.entity_id = e.entity_id
-        WHERE c.case_id = '{case_id}'
-    """).collect()
+        WHERE c.case_id = ?
+    """, params=[case_id]).collect()
 
-    alerts = session.sql(f"""
+    alerts = session.sql("""
         SELECT alert_type, severity, reason, detected_at, status, ml_fraud_probability
         FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
-        WHERE case_id = '{case_id}'
+        WHERE case_id = ?
         ORDER BY severity, detected_at DESC
-    """).to_pandas()
+    """, params=[case_id]).to_pandas()
 
-    trades = session.sql(f"""
+    trades = session.sql("""
         SELECT t.trade_id, t.trading_pair, t.side, t.price, t.quantity,
                t.quote_qty, t.venue, t.trade_ts
         FROM CRYPTO_SURVEILLANCE.HARMONISED.TRADES t
         JOIN CRYPTO_SURVEILLANCE.ANALYTICS.CASES c ON t.account_id = c.entity_id
-        WHERE c.case_id = '{case_id}'
+        WHERE c.case_id = ?
           AND t.trade_ts >= DATEADD('day', -7, CURRENT_TIMESTAMP())
         ORDER BY t.trade_ts DESC
         LIMIT 100
-    """).to_pandas()
+    """, params=[case_id]).to_pandas()
 
-    onchain = session.sql(f"""
+    onchain = session.sql("""
         SELECT ot.tx_hash, ot.chain, ot.event_type, ot.value_decimal,
                ot.token_symbol, ot.from_address, ot.to_address, ot.block_ts
         FROM CRYPTO_SURVEILLANCE.HARMONISED.ONCHAIN_TRANSFERS ot
@@ -353,19 +360,19 @@ def get_case_detail(case_id: str) -> dict:
             ON (ot.from_address = w.wallet_address OR ot.to_address = w.wallet_address)
             AND ot.chain = w.chain
         JOIN CRYPTO_SURVEILLANCE.ANALYTICS.CASES c ON w.owner_entity_id = c.entity_id
-        WHERE c.case_id = '{case_id}'
+        WHERE c.case_id = ?
           AND ot.block_ts >= DATEADD('day', -30, CURRENT_TIMESTAMP())
         ORDER BY ot.block_ts DESC
         LIMIT 50
-    """).to_pandas()
+    """, params=[case_id]).to_pandas()
 
-    events = session.sql(f"""
+    events = session.sql("""
         SELECT event_type, event_data, performed_by, event_ts
         FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS
-        WHERE case_id = '{case_id}'
+        WHERE case_id = ?
         ORDER BY event_ts DESC
         LIMIT 20
-    """).to_pandas()
+    """, params=[case_id]).to_pandas()
 
     return {
         "case":    case[0].as_dict() if case else {},
@@ -402,27 +409,24 @@ def prewarm_bedrock_for_top_case() -> None:
 
 
 def update_case_state(case_id: str, new_state: str, analyst: str) -> None:
-    safe_id = (case_id or "").replace("'", "''")
-    safe_state = (new_state or "").replace("'", "''")
-    safe_analyst = (analyst or "Analyst").replace("'", "''")
-    session.sql(f"""
+    session.sql("""
         UPDATE CRYPTO_SURVEILLANCE.ANALYTICS.CASES
-        SET state = '{safe_state}', assigned_to = '{safe_analyst}',
+        SET state = ?, assigned_to = ?,
             updated_at = CURRENT_TIMESTAMP()
-        WHERE case_id = '{safe_id}'
-    """).collect()
-    session.sql(f"""
+        WHERE case_id = ?
+    """, params=[new_state, analyst or "Analyst", case_id]).collect()
+    session.sql("""
         UPDATE CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
-        SET status = '{safe_state}', updated_at = CURRENT_TIMESTAMP()
-        WHERE case_id = '{safe_id}'
-    """).collect()
-    session.sql(f"""
+        SET status = ?, updated_at = CURRENT_TIMESTAMP()
+        WHERE case_id = ?
+    """, params=[new_state, case_id]).collect()
+    session.sql("""
         INSERT INTO CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS
             (case_id, event_type, event_data, performed_by)
-        SELECT '{safe_id}', 'STATE_CHANGE',
-               PARSE_JSON('{json.dumps({"new_state": new_state})}'),
-               '{safe_analyst}'
-    """).collect()
+        SELECT ?, 'STATE_CHANGE',
+               PARSE_JSON(?),
+               ?
+    """, params=[case_id, json.dumps({"new_state": new_state}), analyst or "Analyst"]).collect()
     st.cache_data.clear()
 
 
@@ -547,7 +551,6 @@ if not case_id:
                 pivot = by_type_df.pivot_table(
                     index="ALERT_TYPE", columns="SEVERITY", values="CNT", fill_value=0
                 )
-                sev_colors = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
                 st.bar_chart(pivot)
         with a_col2:
             st.markdown("**Daily Alert Volume**")
@@ -555,7 +558,6 @@ if not case_id:
                 pivot_day = by_day_df.pivot_table(
                     index="ALERT_DATE", columns="SEVERITY", values="CNT", fill_value=0
                 )
-                sev_colors_day = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
                 st.area_chart(pivot_day)
 
 else:

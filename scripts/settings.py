@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class SnowflakeConfig:
-    connection_name: str = field(default_factory=lambda: os.getenv("SNOWFLAKE_CONNECTION_NAME", "<YOUR_CONNECTION>"))
+    connection_name: str = field(default_factory=lambda: os.getenv("SNOWFLAKE_CONNECTION_NAME", "default"))
     account: str = ""
     user: str = ""
     role: str = "ACCOUNTADMIN"

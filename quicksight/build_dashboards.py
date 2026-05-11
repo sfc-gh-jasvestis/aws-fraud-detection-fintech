@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Build/refresh QuickSight datasets + dashboards + Q topics for all 16 demos.
-Reuses snowflake-demos-ds, applies snowflake-demo-theme, 4 KPI + 2 chart layout."""
+Reuses snowflake-demos-ds, applies snowflake-demo-theme, 4 KPI + 2 chart layout.
+
+NOTE: This is a shared utility. For this repo, run only the crypto-surveillance demo:
+  python quicksight/build_dashboards.py --demo crypto-surveillance
+
+Other demos in this file reference databases outside this repository.
+"""
 import json
 import subprocess
 import sys

@@ -142,7 +142,7 @@ WITH price_spikes AS (
         trading_pair,
         DATE_TRUNC('HOUR', trade_ts)        AS trade_hour,
         DATE_TRUNC('DAY', trade_ts)         AS trade_date,
-        SPLIT_PART(trading_pair, '/', 1)    AS base_asset,
+        base_asset,
         AVG(price)                          AS avg_price,
         MIN(price)                          AS min_price,
         MAX(price)                          AS max_price,

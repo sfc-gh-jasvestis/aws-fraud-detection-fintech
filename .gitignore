@@ -7,3 +7,7 @@ __pycache__/
 .DS_Store
 .venv/
 venv/
+streamlit/output/
+*.egg-info/
+dist/
+build/
