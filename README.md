@@ -1,18 +1,6 @@
 # Digital Asset Market Surveillance & Financial Crime Analytics
-### Snowflake + AWS | Demo
 
-> A regulator-friendly, end-to-end financial crime detection platform for crypto exchanges — governed data in Snowflake AI Data Cloud, high-throughput ingestion on AWS, and an investigator copilot powered by Amazon Bedrock.
-
----
-
-## Two Personas, One Governed Platform
-
-| Persona | Tool | What they see |
-|---|---|---|
-| **Compliance Investigator** | Streamlit in Snowflake | Cases, alerts, entity profiles, SAR drafts, masked PII |
-| **Chief Compliance Officer** | Amazon QuickSight + Amazon Q | Alert trends, risk heatmaps, case SLA, KRIs/KPIs |
-
----
+End-to-end financial crime detection platform for crypto exchanges — governed data in Snowflake AI Data Cloud, high-throughput ingestion on AWS, and an investigator copilot powered by Amazon Bedrock.
 
 ## Architecture
 
@@ -58,138 +46,65 @@ flowchart LR
 | Amazon QuickSight | CCO dashboard: alert trends, risk heatmaps, case SLA |
 | Amazon Q | Natural language KRI/KPI analytics for executives |
 
+## Personas
 
-| Layer | AWS | Snowflake |
-|---|---|---|
-| **Ingest** | MSK, S3, AppFlow, Glue, Cognito | Snowpipe Streaming, External Stages |
-| **Transform** | — | Dynamic Tables (RAW → HARMONISED → FEATURES) |
-| **Detect** | — | 6 SQL Detection Rules + XGBoost UDF |
-| **Investigate** | Amazon Bedrock (Claude) | Streamlit (Investigator Copilot) |
-| **Report** | Amazon QuickSight + Amazon Q | Governed Views (VW_KRIS, VW_QUICKSIGHT_*) |
-| **Govern** | IAM, KMS | Horizon (Tags, Masking Policies, Row Access Policies) |
+| Persona | Role | Key Questions |
+|---------|------|---------------|
+| **Compliance Investigator** | Day-to-day case triage and SAR drafting | "Show me high-risk entities." "Generate a SAR narrative for this case." |
+| **Chief Compliance Officer** | Strategic risk oversight and KRI/KPI monitoring | "What's our alert-to-case conversion rate?" "Which detection rules are firing most?" |
 
----
+## Data
 
-## Repository Structure
+| Table | Rows | Description |
+|-------|------|-------------|
+| CEX_TRADES_RAW | 50,000 | Raw exchange trades (VARIANT schema-on-read) |
+| ORDERS_RAW | 10,000 | Order book snapshots |
+| BALANCES_RAW | 5,000 | Account balance snapshots |
+| LOGS_RAW | 5,000 | Platform activity logs |
+| ONCHAIN_EVENTS_RAW | 5,000 | On-chain transaction events |
+| ENTITY | 50 | KYC-verified entities with risk ratings |
+| WALLET | 170 | Wallet addresses linked to entities |
+| ALERTS | 733 | Detection rule outputs |
+| CASES | 84 | Investigation cases with lifecycle |
 
-```
-aws-fraud-detection-fintech/
-├── snowflake/                        # Snowflake SQL (11 scripts, 00–09)
-│   ├── 00_setup.sql                  # DB, schemas, roles, warehouses, QuickSight SVC user
-│   ├── 01_integrations.sql           # S3 storage integration, Bedrock External Access
-│   ├── 02_raw_tables.sql             # 6 RAW tables (VARIANT schema-on-read)
-│   ├── 03_harmonised.sql             # 4 Dynamic Tables + synthetic reference views
-│   ├── 03b_marketplace_stub.sql      # Zero-row stub if marketplace data unavailable
-│   ├── 04_entity_graph.sql           # Entity/Wallet graph + governance (tags, masking, RAP)
-│   ├── 05_features.sql               # TRADE_FEATURES + ENTITY_FEATURES Dynamic Tables
-│   ├── 06_analytics.sql              # ML scoring UDF + 6 detection rules + ALERTS
-│   ├── 07_cases.sql                  # Cases + lifecycle SPs + QuickSight views + KRI/KPI
-│   ├── 08_bedrock.sql                # SP_GENERATE_CASE_NARRATIVE (Bedrock Claude via SigV4)
-│   ├── 08b_cortex_narrative.sql      # SP_GENERATE_CASE_NARRATIVE (Cortex fallback)
-│   ├── 09_semantic_view.sql          # Cortex Analyst semantic view
-│   └── demo_build_all.sql            # Single build orchestrator (SnowSQL !source)
-├── scripts/
-│   ├── generate_synthetic_data.py    # Synthetic data generator (--quick, --seed-and-refresh)
-│   ├── settings.py                   # Configuration (connection, data params, AWS)
-│   └── __init__.py
-├── streamlit/
-│   └── investigator_app.py           # Streamlit in Snowflake — Investigator Copilot
-├── quicksight/
-│   ├── build_dashboards.py           # QuickSight dataset + dashboard builder
-│   └── theme.json                    # Snowflake-branded theme
-├── aws/
-│   └── architecture.drawio           # Architecture diagram (export to PNG/SVG)
-├── demo/
-│   ├── demo_runbook.md               # 5–7 min live demo script
-│   ├── demo_video_script.md          # 2–3 min recorded demo narrative
-│   └── sample_sar_narrative.md       # Bedrock fallback SAR narrative
-├── requirements.txt                  # Python dependencies
-├── .gitignore
-└── README.md
-```
-
-> **Note for partners**: AWS infrastructure (MSK, S3, Lambda, QuickSight) is built separately by the partner team. This repo contains only the Snowflake platform, Streamlit app, and demo materials.
-
----
-
-## Quick Start
+## Build Instructions
 
 ### Prerequisites
-- SnowSQL connected to your Snowflake account (`snowsql -c <CONNECTION>`)
+- Snowflake account with ACCOUNTADMIN access
+- Cortex AI enabled (Cortex Analyst, Cortex Agent)
+- Warehouse: CORTEX (Medium)
 - Python 3.10+ (for synthetic data generator)
-- AWS CLI (for QuickSight setup — partner-led)
+- AWS CLI (for QuickSight setup)
 
-### 1. Build Snowflake Platform
+### Deployment
+
 ```bash
 snowsql -c <CONNECTION> -f snowflake/demo_build_all.sql
-```
 
-### 2. Load Data + Activate Pipeline
-
-**Quick reset** (<60 seconds, 5K trades):
-```bash
 SNOWFLAKE_CONNECTION_NAME=<CONNECTION> python scripts/generate_synthetic_data.py --quick
 ```
 
-**Full dataset** (~3 min, 50K trades):
-```bash
-SNOWFLAKE_CONNECTION_NAME=<CONNECTION> python scripts/generate_synthetic_data.py \
-    --scenario all --trades 50000 --seed-and-refresh
+### Streamlit App
+```
+CRYPTO_SURVEILLANCE.ANALYTICS.INVESTIGATOR_COPILOT
 ```
 
-The `--seed-and-refresh` flag refreshes all Dynamic Tables, runs detection + case creation SPs, resumes tasks, and prints a health check.
+## Build Modes
 
-### 3. (Optional) Update Bedrock Credentials
-```sql
-ALTER SECRET CRYPTO_SURVEILLANCE.ANALYTICS.BEDROCK_SECRET
-    SET SECRET_STRING = '{"aws_access_key_id":"AKIA...","aws_secret_access_key":"..."}';
-```
+### Snowflake Only
+Run the SQL scripts in `snowflake/` (skip `01_integrations.sql`, use `08b_cortex_narrative.sql` instead of `08_bedrock.sql`) and deploy the Streamlit app from `streamlit/deploy/`. Uses Cortex AI instead of Bedrock, and Snowflake Intelligence instead of QuickSight.
 
-### 4. Health Check
-```sql
-SELECT
-    (SELECT COUNT(*) FROM CRYPTO_SURVEILLANCE.RAW.CEX_TRADES_RAW)     AS raw_trades,
-    (SELECT COUNT(*) FROM CRYPTO_SURVEILLANCE.HARMONISED.TRADES)      AS harm_trades,
-    (SELECT COUNT(*) FROM CRYPTO_SURVEILLANCE.HARMONISED.ENTITY)      AS entities,
-    (SELECT COUNT(*) FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS)       AS alerts,
-    (SELECT COUNT(*) FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASES)        AS cases;
-```
+### Full AWS + Snowflake
+Run all SQL scripts including `01_integrations.sql` and `08_bedrock.sql`, deploy the main Streamlit app from `streamlit/`, then run the QuickSight setup from `quicksight/`.
 
-Expected: raw_trades ~5K (quick) or ~50K (full), alerts > 50, cases > 5.
+## Key Demo Numbers
 
----
+- **733 alerts** generated by 6 detection rules (pump-and-dump, wash trading, cross-exchange arb, sanctions, structuring, mixer)
+- **84 active cases** with full lifecycle (OPEN → INVESTIGATING → ESCALATED → CLOSED)
+- **50 entities** with KYC tiers, PEP/sanctions flags, and AML risk ratings
+- **XGBoost fraud scoring** UDF produces per-entity ML probability
+- **Bedrock Claude** generates SAR narratives in seconds
 
-## SQL File Map
+## License
 
-| # | File | What it creates |
-|---|---|---|
-| 00 | `00_setup.sql` | DB, 5 schemas, 4 roles, 2 warehouses, QuickSight SVC user (network policy commented — see notes) |
-| 01 | `01_integrations.sql` | S3 storage integration, Bedrock External Access, streaming user |
-| 02 | `02_raw_tables.sql` | 6 RAW tables (VARIANT schema-on-read) |
-| 03 | `03_harmonised.sql` | 4 Dynamic Tables + synthetic price/wallet/marketplace views |
-| 04 | `04_entity_graph.sql` | ENTITY, WALLET, ENTITY_RELATION + governance (tags, masking, RAP) |
-| 05 | `05_features.sql` | TRADE_FEATURES + ENTITY_FEATURES Dynamic Tables |
-| 06 | `06_analytics.sql` | ML scoring UDF (XGBoost heuristic*) + ALERT_SCORES DT + 6 detection rules + ALERTS |
-| 07 | `07_cases.sql` | CASES + case lifecycle SPs + QuickSight views + KRI/KPI views |
-| 08 | `08_bedrock.sql` | SP_GENERATE_CASE_NARRATIVE (Bedrock Claude via SigV4) |
-| 08b | `08b_cortex_narrative.sql` | SP_GENERATE_CASE_NARRATIVE (Cortex fallback — no AWS required) |
-| 09 | `09_semantic_view.sql` | Cortex Analyst semantic view for natural-language queries |
-
-> *The XGBoost UDF (`FRAUD_RISK_SCORE`) uses a heuristic scoring formula for demo portability. Replace with a trained model via `_cache['model']` for production use.
-
----
-
-## Demo Scripts
-
-| Script | Duration | Audience |
-|---|---|---|
-| `demo/demo_video_script.md` | 2–3 min | Recorded video walkthrough |
-| `demo/demo_runbook.md` | 5–7 min | Live booth demo |
-
----
-
-## Legal
-
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
-
-This is a personal project and is **not an official Snowflake offering**. It comes with **no support or warranty**. Use it at your own risk. Snowflake has no obligation to maintain, update, or support this code. Do not use this code in production without thorough review and testing.
+Apache 2.0 — See [LICENSE](LICENSE) for details.

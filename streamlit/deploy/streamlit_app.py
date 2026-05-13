@@ -1,0 +1,689 @@
+"""
+Streamlit in Snowflake: Digital Asset Market Surveillance — Investigator Copilot
+─────────────────────────────────────────────────────────────────────────────────
+Deploy to Snowflake via:
+  CREATE STREAMLIT CRYPTO_SURVEILLANCE.ANALYTICS.INVESTIGATOR_COPILOT
+    ROOT_LOCATION = '@CRYPTO_SURVEILLANCE.ANALYTICS.STREAMLIT_STAGE/investigator_copilot/'
+    MAIN_FILE     = 'investigator_app.py'
+    QUERY_WAREHOUSE = WH_SURVEILLANCE;
+
+Or paste directly into a Snowflake Notebook/Streamlit tile in Snowsight.
+"""
+
+import json
+from datetime import datetime, timedelta
+
+import pandas as pd
+import streamlit as st
+import _snowflake
+from snowflake.snowpark.context import get_active_session
+
+session = get_active_session()
+
+st.set_page_config(
+    page_title="Market Surveillance Investigator",
+    page_icon="🔍",
+    layout="wide",
+)
+
+st.markdown("""
+<style>
+    .main-header {
+        background: linear-gradient(135deg, #1a1f3a 0%, #29B5E8 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 8px;
+        color: white !important;
+        margin-bottom: 1.5rem;
+    }
+    .main-header h2, .main-header p {
+        color: white !important;
+        margin: 0;
+    }
+    .main-header h2 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .main-header p { opacity: 0.9; font-size: 0.95rem; }
+    .severity-critical { color: #FF4B4B; font-weight: bold; }
+    .severity-high     { color: #FF8C00; font-weight: bold; }
+    .severity-medium   { color: #FFA500; }
+    .severity-low      { color: #00C851; }
+    .ai-output {
+        background: #0d1117;
+        color: #e6edf3;
+        border-left: 3px solid #29B5E8;
+        padding: 1rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="main-header">
+    <h2>🔍 Digital Asset Market Surveillance</h2>
+    <p>Investigator Copilot | Powered by Snowflake AI Data Cloud</p>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ─── Page router ──────────────────────────────────────────────────────────────
+st.sidebar.markdown("### Section")
+page = st.sidebar.radio(
+    "Section",
+    ["Cases", "Detection Patterns", "Ask the Data"],
+    label_visibility="collapsed",
+)
+st.sidebar.divider()
+
+
+def _df(sql: str) -> pd.DataFrame:
+    return session.sql(sql).to_pandas()
+
+
+SEV_COLORS = {"CRITICAL": "#FF4B4B", "HIGH": "#FF8C00", "MEDIUM": "#FFA500", "LOW": "#00C851"}
+
+
+@st.cache_data(ttl=120)
+def load_detection(view_name: str) -> pd.DataFrame:
+    return _df(f"SELECT * FROM CRYPTO_SURVEILLANCE.ANALYTICS.{view_name} ORDER BY DETECTED_AT DESC LIMIT 500")
+
+
+if page == "Detection Patterns":
+    st.subheader("Detection Patterns")
+    st.caption("Six rule + ML detection signals across trading and on-chain activity")
+
+    tab_m, tab_w, tab_p, tab_s, tab_sc, tab_a = st.tabs([
+        "Mixer", "Wash Trade", "Pump & Dump", "Structuring", "Sanctioned", "Cross-Exchange"
+    ])
+
+    with tab_m:
+        df = load_detection("VW_MIXER_EXPOSURE")
+        st.markdown("Entities transacting with known mixer wallets (Tornado Cash, etc.)")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Entities", df["ENTITY_ID"].nunique() if not df.empty else 0)
+        c2.metric("Total Mixer Volume", f"{df['MIXER_VOLUME'].astype(float).sum():,.0f}" if not df.empty else 0)
+        c3.metric("Critical", int((df["SEVERITY"] == "CRITICAL").sum()) if not df.empty else 0)
+        if not df.empty:
+            top = df.nlargest(15, "MIXER_VOLUME")
+            import plotly.express as px
+            fig = px.bar(top, x="MIXER_VOLUME", y="ENTITY_ID", orientation="h",
+                         color="SEVERITY", color_discrete_map=SEV_COLORS, title="Top 15 by Mixer Volume")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No mixer exposure detected.")
+
+    with tab_w:
+        df = load_detection("VW_WASH_TRADE_PATTERNS")
+        st.markdown("Buy/sell pairs at near-identical price within 10 minutes (likely self-trading)")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Wash Pairs", len(df))
+        c2.metric("Accounts", df["ACCOUNT_ID"].nunique() if not df.empty else 0)
+        c3.metric("Pairs", df["TRADING_PAIR"].nunique() if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            top_pair = df["TRADING_PAIR"].value_counts().reset_index().head(15)
+            top_pair.columns = ["TRADING_PAIR", "COUNT"]
+            fig = px.bar(top_pair, x="COUNT", y="TRADING_PAIR", orientation="h",
+                         color="COUNT", color_continuous_scale="Reds",
+                         title="Top 15 Trading Pairs with Wash Activity")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"},
+                              coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No wash trades detected.")
+
+    with tab_p:
+        df = load_detection("VW_PUMP_AND_DUMP_CANDIDATES")
+        st.markdown("Coordinated price spikes vs marketplace reference price")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Candidates", len(df))
+        if not df.empty:
+            c2.metric("Max Spike %", f"{float(df['PRICE_SPIKE_PCT'].max()):.1f}%")
+            c3.metric("Max Deviation %", f"{float(df['MARKETPLACE_PRICE_DEVIATION_PCT'].abs().max()):.1f}%")
+            import plotly.express as px
+            fig = px.scatter(df, x="WINDOW_VOLUME", y="PRICE_SPIKE_PCT", color="SEVERITY",
+                             color_discrete_map=SEV_COLORS, hover_data=["TRADING_PAIR", "ACCOUNT_ID"],
+                             title="Price Spike vs Window Volume", size_max=15)
+            fig.update_layout(height=400, margin=dict(t=40, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No pump-and-dump candidates.")
+
+    with tab_s:
+        df = load_detection("VW_STRUCTURING_PATTERNS")
+        st.markdown("Below-threshold transaction splitting (sub-$10k repeat trades)")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Patterns", len(df))
+        c2.metric("Accounts", df["ACCOUNT_ID"].nunique() if not df.empty else 0)
+        c3.metric("Total Below-Threshold $", f"{float(df['BELOW_THRESHOLD_VOLUME'].sum()):,.0f}" if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            top = df.nlargest(15, "BELOW_THRESHOLD_COUNT")
+            fig = px.bar(top, x="BELOW_THRESHOLD_COUNT", y="ACCOUNT_ID", orientation="h",
+                         color="SEVERITY", color_discrete_map=SEV_COLORS,
+                         title="Top 15 Accounts by Below-Threshold Trade Count")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No structuring patterns.")
+
+    with tab_sc:
+        df = load_detection("VW_SANCTIONED_COUNTERPARTY_EXPOSURE")
+        st.markdown("On-chain transfers touching OFAC/UN sanctioned addresses")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Hits", len(df))
+        c2.metric("Entities", df["ENTITY_ID"].nunique() if not df.empty else 0)
+        c3.metric("Tokens", df["TOKEN_SYMBOL"].nunique() if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            tok = df.groupby("TOKEN_SYMBOL")["VALUE_DECIMAL"].sum().reset_index().sort_values("VALUE_DECIMAL", ascending=False).head(10)
+            fig = px.bar(tok, x="TOKEN_SYMBOL", y="VALUE_DECIMAL", color="VALUE_DECIMAL",
+                         color_continuous_scale="Reds", title="Top Tokens — Sanctioned Counterparty Volume")
+            fig.update_layout(height=400, margin=dict(t=40, b=10), coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No sanctioned counterparty exposure.")
+
+    with tab_a:
+        df = load_detection("VW_CROSS_EXCHANGE_ARBITRAGE")
+        st.markdown("Trades across multiple venues with significant price spreads")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Events", len(df))
+        c2.metric("Pairs", df["TRADING_PAIR"].nunique() if not df.empty else 0)
+        c3.metric("Max Spread", f"{float(df['PRICE_SPREAD'].max()):.4f}" if not df.empty else 0)
+        if not df.empty:
+            import plotly.express as px
+            top = df.nlargest(15, "PRICE_SPREAD")
+            fig = px.bar(top, x="PRICE_SPREAD", y="TRADING_PAIR", orientation="h",
+                         color="VENUES_COUNT", color_continuous_scale="Blues",
+                         title="Top 15 Pairs by Price Spread", hover_data=["VENUES", "TOTAL_VOLUME"])
+            fig.update_layout(height=400, margin=dict(t=40, b=10), yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True, height=350)
+        else:
+            st.info("No cross-exchange arbitrage detected.")
+
+    st.stop()
+
+
+if page == "Ask the Data":
+    st.subheader("Ask the Data")
+    st.caption("Natural-language questions powered by Cortex Analyst over the Surveillance semantic view")
+    samples = [
+        "Which entities have the most mixer exposure?",
+        "Show me wash trade patterns this week",
+        "What is the total notional in sanctioned counterparty alerts?",
+    ]
+    sel = st.selectbox("Sample questions:", [""] + samples)
+    user_q = st.text_input("Or type your question:", value=sel)
+    if user_q:
+        with st.spinner("Cortex Analyst..."):
+            try:
+                body = {
+                    "messages": [{"role": "user", "content": [{"type": "text", "text": user_q}]}],
+                    "semantic_view": "CRYPTO_SURVEILLANCE.ANALYTICS.SURVEILLANCE_SEMANTIC_VIEW",
+                }
+                resp = _snowflake.send_snow_api_request(
+                    "POST", "/api/v2/cortex/analyst/message", {}, {}, body, None, 30000
+                )
+                parsed = json.loads(resp["content"])
+                if resp["status"] < 400:
+                    for block in parsed.get("message", {}).get("content", []):
+                        if block.get("type") == "text":
+                            st.markdown(block.get("text", ""))
+                        elif block.get("type") == "sql":
+                            sql = block.get("statement", "")
+                            with st.expander("SQL"):
+                                st.code(sql, language="sql")
+                            try:
+                                st.dataframe(session.sql(sql).to_pandas(), use_container_width=True)
+                            except Exception as e:
+                                st.error(f"Query error: {e}")
+                else:
+                    st.error(parsed)
+            except Exception as e:
+                st.error(f"Analyst error: {e}")
+    st.stop()
+
+
+# ─── Helper functions ─────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=60)
+def get_kri_metrics() -> dict:
+    rows = session.sql("""
+        SELECT
+            COUNT_IF(detected_at >= DATEADD('day',-1,CURRENT_TIMESTAMP())) AS alerts_24h,
+            COUNT_IF(severity = 'CRITICAL'
+                     AND detected_at >= DATEADD('day',-1,CURRENT_TIMESTAMP())) AS critical_24h,
+            COUNT_IF(status = 'OPEN')  AS open_alerts,
+            COUNT_IF(status = 'IN_REVIEW') AS in_review_alerts
+        FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+    """).collect()
+    case_rows = session.sql("""
+        SELECT
+            COUNT_IF(state = 'OPEN') AS open_cases,
+            COUNT_IF(sla_breached = TRUE AND state NOT IN ('CLOSED','FALSE_POSITIVE'))
+                AS sla_breached,
+            COUNT_IF(state = 'ESCALATED') AS escalated
+        FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASES
+    """).collect()
+    return {**(rows[0].as_dict() if rows else {}),
+            **(case_rows[0].as_dict() if case_rows else {})}
+
+
+@st.cache_data(ttl=30)
+def get_open_cases(priority_filter: str, state_filter: str) -> pd.DataFrame:
+    filters = []
+    if priority_filter != "All":
+        filters.append("c.priority = ?")
+    if state_filter != "All":
+        filters.append("c.state = ?")
+    where = "WHERE " + " AND ".join(filters) if filters else ""
+
+    params = []
+    if priority_filter != "All":
+        params.append(priority_filter)
+    if state_filter != "All":
+        params.append(state_filter)
+
+    query = f"""
+        SELECT
+            c.case_id,
+            c.case_ref,
+            c.entity_id,
+            c.state,
+            c.priority,
+            c.title,
+            c.peak_ml_probability,
+            c.composite_severity,
+            c.sla_breached,
+            c.assigned_to,
+            c.created_at,
+            c.due_by,
+            e.aml_risk_rating,
+            e.kyc_tier,
+            e.pep_flag,
+            e.sanctions_flag
+        FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASES c
+        LEFT JOIN CRYPTO_SURVEILLANCE.HARMONISED.ENTITY e ON c.entity_id = e.entity_id
+        {where}
+        ORDER BY
+            CASE c.priority
+                WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2
+                WHEN 'MEDIUM'   THEN 3 ELSE 4
+            END,
+            c.created_at DESC
+        LIMIT 200
+    """
+    return session.sql(query, params=params).to_pandas()
+
+
+@st.cache_data(ttl=30)
+def get_case_detail(case_id: str) -> dict:
+    case = session.sql("""
+        SELECT c.*, e.full_name, e.email, e.aml_risk_rating,
+               e.kyc_tier, e.pep_flag, e.sanctions_flag, e.account_type,
+               e.onboarded_at
+        FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASES c
+        LEFT JOIN CRYPTO_SURVEILLANCE.HARMONISED.ENTITY e ON c.entity_id = e.entity_id
+        WHERE c.case_id = ?
+    """, params=[case_id]).collect()
+
+    alerts = session.sql("""
+        SELECT alert_type, severity, reason, detected_at, status, ml_fraud_probability
+        FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+        WHERE case_id = ?
+        ORDER BY severity, detected_at DESC
+    """, params=[case_id]).to_pandas()
+
+    trades = session.sql("""
+        SELECT t.trade_id, t.trading_pair, t.side, t.price, t.quantity,
+               t.quote_qty, t.venue, t.trade_ts
+        FROM CRYPTO_SURVEILLANCE.HARMONISED.TRADES t
+        JOIN CRYPTO_SURVEILLANCE.ANALYTICS.CASES c ON t.account_id = c.entity_id
+        WHERE c.case_id = ?
+          AND t.trade_ts >= DATEADD('day', -7, CURRENT_TIMESTAMP())
+        ORDER BY t.trade_ts DESC
+        LIMIT 100
+    """, params=[case_id]).to_pandas()
+
+    onchain = session.sql("""
+        SELECT ot.tx_hash, ot.chain, ot.event_type, ot.value_decimal,
+               ot.token_symbol, ot.from_address, ot.to_address, ot.block_ts
+        FROM CRYPTO_SURVEILLANCE.HARMONISED.ONCHAIN_TRANSFERS ot
+        JOIN CRYPTO_SURVEILLANCE.HARMONISED.WALLET w
+            ON (ot.from_address = w.wallet_address OR ot.to_address = w.wallet_address)
+            AND ot.chain = w.chain
+        JOIN CRYPTO_SURVEILLANCE.ANALYTICS.CASES c ON w.owner_entity_id = c.entity_id
+        WHERE c.case_id = ?
+          AND ot.block_ts >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+        ORDER BY ot.block_ts DESC
+        LIMIT 50
+    """, params=[case_id]).to_pandas()
+
+    events = session.sql("""
+        SELECT event_type, event_data, performed_by, event_ts
+        FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS
+        WHERE case_id = ?
+        ORDER BY event_ts DESC
+        LIMIT 20
+    """, params=[case_id]).to_pandas()
+
+    return {
+        "case":    case[0].as_dict() if case else {},
+        "alerts":  alerts,
+        "trades":  trades,
+        "onchain": onchain,
+        "events":  events,
+    }
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def call_cortex_copilot(case_id: str) -> dict:
+    result = session.call(
+        "CRYPTO_SURVEILLANCE.ANALYTICS.SP_GENERATE_CASE_NARRATIVE",
+        case_id,
+    )
+    if isinstance(result, str):
+        return json.loads(result)
+    return result or {}
+
+
+def prewarm_cortex_for_top_case() -> None:
+    rows = session.sql("""
+        SELECT case_id FROM CRYPTO_SURVEILLANCE.ANALYTICS.CASES
+        WHERE state = 'OPEN'
+          AND sar_narrative IS NULL
+        ORDER BY CASE priority WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2
+                               WHEN 'MEDIUM' THEN 3 ELSE 4 END,
+                 created_at ASC
+        LIMIT 1
+    """).collect()
+    if rows:
+        call_cortex_copilot(rows[0]["CASE_ID"])
+
+
+def update_case_state(case_id: str, new_state: str, analyst: str) -> None:
+    session.sql("""
+        UPDATE CRYPTO_SURVEILLANCE.ANALYTICS.CASES
+        SET state = ?, assigned_to = ?,
+            updated_at = CURRENT_TIMESTAMP()
+        WHERE case_id = ?
+    """, params=[new_state, analyst or "Analyst", case_id]).collect()
+    session.sql("""
+        UPDATE CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+        SET status = ?, updated_at = CURRENT_TIMESTAMP()
+        WHERE case_id = ?
+    """, params=[new_state, case_id]).collect()
+    session.sql("""
+        INSERT INTO CRYPTO_SURVEILLANCE.ANALYTICS.CASE_EVENTS
+            (case_id, event_type, event_data, performed_by)
+        SELECT ?, 'STATE_CHANGE',
+               PARSE_JSON(?),
+               ?
+    """, params=[case_id, json.dumps({"new_state": new_state}), analyst or "Analyst"]).collect()
+    st.cache_data.clear()
+
+
+# ─── Sidebar: filters + case picker ──────────────────────────────────────────
+
+df_cases = pd.DataFrame()
+
+with st.sidebar:
+    st.header("Filters")
+    priority_filter = st.selectbox("Priority", ["All", "CRITICAL", "HIGH", "MEDIUM", "LOW"])
+    state_filter = st.selectbox("State", ["All", "OPEN", "IN_REVIEW", "ESCALATED", "CLOSED"])
+
+    df_cases = get_open_cases(priority_filter, state_filter)
+
+    st.divider()
+    st.header("Case Picker")
+
+    if df_cases.empty:
+        st.caption("No cases match filters.")
+        case_options = []
+    else:
+        case_options = []
+        for _, row in df_cases.iterrows():
+            label = f"{row['PRIORITY'][0]}  {row['CASE_REF']}  —  {row['TITLE'][:40]}"
+            case_options.append(label)
+
+    def _on_case_pick():
+        idx = st.session_state.get("_case_pick_idx")
+        if idx is not None and idx > 0:
+            st.session_state["selected_case_id"] = df_cases.iloc[idx - 1]["CASE_ID"]
+
+    selected_idx = st.selectbox(
+        "Select case",
+        range(len(case_options) + 1),
+        format_func=lambda i: "— pick a case —" if i == 0 else case_options[i - 1],
+        key="_case_pick_idx",
+        on_change=_on_case_pick,
+        label_visibility="collapsed",
+    )
+
+    st.divider()
+    analyst_name = st.text_input("Your Name", value="Analyst", key="analyst_name")
+    st.divider()
+    if st.button("Refresh Data", use_container_width=True):
+        st.cache_data.clear()
+        (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
+    st.divider()
+    st.caption("Demo Controls")
+    if st.button("Pre-warm Cortex AI", use_container_width=True,
+                 help="Generate narrative for the top case now so the demo button is instant"):
+        with st.spinner("Pre-warming Cortex AI (runs once, cached 10 min)..."):
+            try:
+                prewarm_cortex_for_top_case()
+                st.success("Ready — Cortex AI response cached")
+            except Exception as exc:
+                st.warning(f"Pre-warm skipped: {exc}")
+
+
+# ─── KRI dashboard row ───────────────────────────────────────────────────────
+st.subheader("Key Risk Indicators")
+kri = get_kri_metrics()
+
+col1, col2, col3, col4, col5, col6 = st.columns(6)
+col1.metric("Alerts (24h)", kri.get("ALERTS_24H", 0))
+col2.metric("Critical (24h)", kri.get("CRITICAL_24H", 0), delta=None)
+col3.metric("Open Alerts", kri.get("OPEN_ALERTS", 0))
+col4.metric("Open Cases", kri.get("OPEN_CASES", 0))
+col5.metric("SLA Breached", kri.get("SLA_BREACHED", 0), delta=None)
+col6.metric("Escalated", kri.get("ESCALATED", 0), delta=None)
+
+st.divider()
+
+# ─── Main content ─────────────────────────────────────────────────────────────
+
+case_id = st.session_state.get("selected_case_id")
+
+if not case_id:
+    st.subheader("Case Queue")
+    if df_cases.empty:
+        st.info("No cases match the current filters.")
+    else:
+        st.caption(f"{len(df_cases)} cases — pick one from the sidebar to investigate")
+
+        def style_priority(val: str) -> str:
+            return {
+                "CRITICAL": "color: #FF4B4B; font-weight: bold;",
+                "HIGH":     "color: #FF8C00; font-weight: bold;",
+                "MEDIUM":   "color: #FFA500;",
+                "LOW":      "color: #00C851;",
+            }.get(val, "")
+
+        styled = df_cases[["CASE_REF", "ENTITY_ID", "PRIORITY", "STATE", "TITLE",
+                           "PEAK_ML_PROBABILITY", "AML_RISK_RATING", "SLA_BREACHED",
+                           "CREATED_AT"]].style.map(
+            style_priority, subset=["PRIORITY"]
+        )
+        st.dataframe(styled, use_container_width=True, height=500)
+
+    with st.expander("Alert Analytics (30d)"):
+        @st.cache_data(ttl=120)
+        def get_alert_analytics() -> tuple:
+            by_type = session.sql("""
+                SELECT alert_type, severity, COUNT(*) AS cnt
+                FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+                WHERE detected_at >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+                GROUP BY 1, 2 ORDER BY cnt DESC
+            """).to_pandas()
+            by_day = session.sql("""
+                SELECT DATE_TRUNC('DAY', detected_at)::DATE AS alert_date,
+                       severity, COUNT(*) AS cnt
+                FROM CRYPTO_SURVEILLANCE.ANALYTICS.ALERTS
+                WHERE detected_at >= DATEADD('day', -30, CURRENT_TIMESTAMP())
+                GROUP BY 1, 2 ORDER BY 1
+            """).to_pandas()
+            return by_type, by_day
+
+        by_type_df, by_day_df = get_alert_analytics()
+        a_col1, a_col2 = st.columns(2)
+        with a_col1:
+            st.markdown("**Alerts by Type**")
+            if not by_type_df.empty:
+                pivot = by_type_df.pivot_table(
+                    index="ALERT_TYPE", columns="SEVERITY", values="CNT", fill_value=0
+                )
+                st.bar_chart(pivot)
+        with a_col2:
+            st.markdown("**Daily Alert Volume**")
+            if not by_day_df.empty:
+                pivot_day = by_day_df.pivot_table(
+                    index="ALERT_DATE", columns="SEVERITY", values="CNT", fill_value=0
+                )
+                st.area_chart(pivot_day)
+
+else:
+    detail = get_case_detail(case_id)
+    c = detail["case"]
+
+    if not c:
+        st.warning("Case not found. Pick another from the sidebar.")
+    else:
+        sev_class = {
+            "CRITICAL": "severity-critical",
+            "HIGH":     "severity-high",
+            "MEDIUM":   "severity-medium",
+        }.get(c.get("PRIORITY", ""), "severity-low")
+
+        st.markdown(f"""
+        ### {c.get('CASE_REF','N/A')} — {c.get('TITLE','Untitled')}
+        **Entity:** `{c.get('ENTITY_ID')}` | **State:** `{c.get('STATE')}` |
+        **Priority:** <span class="{sev_class}">{c.get('PRIORITY')}</span> |
+        **ML Score:** {float(c.get('PEAK_ML_PROBABILITY') or 0):.1%}
+        """, unsafe_allow_html=True)
+
+        col_a, col_b, col_c, col_d = st.columns(4)
+        with col_a:
+            if st.button("Start Review", use_container_width=True):
+                update_case_state(case_id, "IN_REVIEW", analyst_name)
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
+        with col_b:
+            if st.button("Escalate", use_container_width=True):
+                update_case_state(case_id, "ESCALATED", analyst_name)
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
+        with col_c:
+            if st.button("Close — TP", use_container_width=True):
+                update_case_state(case_id, "CLOSED", analyst_name)
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
+        with col_d:
+            if st.button("False Positive", use_container_width=True):
+                update_case_state(case_id, "FALSE_POSITIVE", analyst_name)
+                (st.rerun if hasattr(st, 'rerun') else st.experimental_rerun)()
+
+        st.divider()
+
+        with st.expander("Entity Profile", expanded=True):
+            e_col1, e_col2, e_col3 = st.columns(3)
+            e_col1.markdown(f"**KYC Tier:** `{c.get('KYC_TIER','?')}`")
+            e_col1.markdown(f"**AML Rating:** `{c.get('AML_RISK_RATING','?')}`")
+            e_col2.markdown(f"**PEP:** {'YES' if c.get('PEP_FLAG') else 'NO'}")
+            e_col2.markdown(f"**Sanctions:** {'YES' if c.get('SANCTIONS_FLAG') else 'NO'}")
+            e_col3.markdown(f"**Account Type:** `{c.get('ACCOUNT_TYPE','?')}`")
+            e_col3.markdown(f"**Onboarded:** `{c.get('ONBOARDED_AT','?')}`")
+
+        with st.expander(f"Alerts ({len(detail['alerts'])})", expanded=True):
+            if not detail["alerts"].empty:
+                st.dataframe(detail["alerts"], use_container_width=True)
+            else:
+                st.caption("No alerts linked to this case.")
+
+        col_t, col_oc = st.columns(2)
+        with col_t:
+            with st.expander(f"CEX Trades (7d, {len(detail['trades'])} rows)"):
+                if not detail["trades"].empty:
+                    st.dataframe(detail["trades"], use_container_width=True, height=300)
+                    if "TRADE_TS" in detail["trades"].columns:
+                        chart_data = (
+                            detail["trades"]
+                            .assign(trade_date=pd.to_datetime(detail["trades"]["TRADE_TS"]).dt.date)
+                            .groupby("trade_date")["QUOTE_QTY"].sum()
+                            .reset_index()
+                        )
+                        st.line_chart(chart_data.set_index("trade_date")["QUOTE_QTY"])
+
+        with col_oc:
+            with st.expander(f"On-Chain Activity (30d, {len(detail['onchain'])} rows)"):
+                if not detail["onchain"].empty:
+                    st.dataframe(detail["onchain"], use_container_width=True, height=300)
+
+        st.divider()
+        st.subheader("Cortex AI Investigator Copilot")
+
+        if c.get("SAR_NARRATIVE"):
+            st.success("Narrative already generated. Re-generate to refresh.")
+            st.markdown(f'<div class="ai-output">{c["SAR_NARRATIVE"]}</div>',
+                        unsafe_allow_html=True)
+
+        if st.button("Generate Case Narrative & SAR Draft (Cortex AI)", type="primary",
+                     use_container_width=True):
+            with st.spinner("Calling Cortex AI..."):
+                try:
+                    result = call_cortex_copilot(case_id)
+
+                    if "error" in result:
+                        st.error(f"Cortex AI error: {result['error']}")
+                    else:
+                        st.success("Narrative generated!")
+
+                        n_col1, n_col2 = st.columns(2)
+                        with n_col1:
+                            st.markdown("**Case Summary**")
+                            st.markdown(
+                                f'<div class="ai-output">{result.get("case_summary","")}</div>',
+                                unsafe_allow_html=True
+                            )
+                            st.markdown("**Risk Indicators**")
+                            for ri in result.get("risk_indicators", []):
+                                st.markdown(f"- {ri}")
+
+                        with n_col2:
+                            st.markdown("**Recommended Action**")
+                            rec = result.get("recommended_action", "")
+                            colour = "🔴" if "SAR" in rec or "FREEZE" in rec else "🟡"
+                            st.markdown(f"{colour} **{rec}**")
+
+                            st.markdown("**Next Steps**")
+                            for i, step in enumerate(result.get("next_steps", []), 1):
+                                st.markdown(f"{i}. {step}")
+
+                        with st.expander("Full SAR Narrative"):
+                            st.markdown(
+                                f'<div class="ai-output">{result.get("sar_narrative","")}</div>',
+                                unsafe_allow_html=True
+                            )
+                        st.cache_data.clear()
+
+                except Exception as exc:
+                    st.error(f"Error calling copilot: {exc}")
+
+        with st.expander("Case Audit Trail"):
+            if not detail["events"].empty:
+                st.dataframe(detail["events"], use_container_width=True)
