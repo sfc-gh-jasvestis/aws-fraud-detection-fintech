@@ -102,10 +102,10 @@ Run all SQL scripts including `01_integrations.sql` and `08_bedrock.sql`, deploy
 Industry research and Snowflake customer outcomes:
 - **Traditional transaction monitoring**: 95% false positive rate -- Industry benchmark
 - **AI reduces investigation time** per case by 50-70% -- McKinsey Financial Crimes
-- **FIS** (Snowflake customer): 2.5x faster execution, 33% cost savings, processes 1B transactions without issue -- snowflake.com/customers
+- **FIS** (Snowflake customer): 2.5x faster execution, 33% cost savings, processes 1B transactions without issue -- [snowflake.com/customers/fis](https://www.snowflake.com/en/customers/all-customers/case-study/fis/)
 - **2023 crypto enforcement actions**: $5.6B in fines globally -- Chainalysis
 
-- **FIS** processes 1 billion compliance transactions on Snowflake with 68% fewer severity-1 incidents -- snowflake.com/customers
+- **FIS** processes 1 billion compliance transactions on Snowflake with 68% fewer severity-1 incidents -- [snowflake.com/customers/fis](https://www.snowflake.com/en/customers/all-customers/case-study/fis/)
 
 ## Key Demo Numbers
 
