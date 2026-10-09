@@ -1,0 +1,76 @@
+{
+  "title": "Market Surveillance",
+  "duration": "6 minutes",
+  "thesis": "Snowflake turns daily account activity from a synthetic digital-asset exchange into alert-precision KPIs, 7-day suspicious-activity risk scores, self-match anomalies and grounded AI answers, all on curated dynamic tables.",
+  "tabs": [
+    {
+      "id": "executive-cockpit",
+      "persona": { "name": "Grace Lim", "role": "Chief Compliance Officer (fictional)", "avatar": "" },
+      "talking_points": [
+        "Alert precision, alerts raised, SARs filed and notional monitored for 40 accounts across 5 APJ markets.",
+        "Every KPI is a numerator over a denominator in a curated dynamic table, so it can be traced back to account-day rows.",
+        "The detection-rule chart shows which rules produce confirmed suspicious activity and which mostly produce false positives."
+      ],
+      "show": ["KPI cards", "Daily alerts", "Alerts by detection rule", "Account table"],
+      "call_out": "One governed set of surveillance KPIs, traceable to source rows",
+      "transition": { "next_tab": "predictive", "line": "Which accounts should investigators look at first?" }
+    },
+    {
+      "id": "predictive",
+      "persona": { "name": "Daniel Wong", "role": "Financial Crime Investigator (fictional)", "avatar": "" },
+      "talking_points": [
+        "Snowflake ML classification scores each account's probability of confirmed suspicious activity in the next 7 days.",
+        "The holdout line shows precision and recall on the most recent 14 days, against the base rate.",
+        "Anomaly detection flags self-match ratio outliers per account, and the forecast projects exchange-wide alert volume for 14 days."
+      ],
+      "show": ["Holdout metrics", "Risk by account", "Alert forecast", "Self-match anomalies"],
+      "call_out": "Honest, evaluated ML inside the data platform",
+      "transition": { "next_tab": "planning", "line": "Are our controls keeping up?" }
+    },
+    {
+      "id": "planning",
+      "persona": { "name": "Daniel Wong", "role": "Financial Crime Investigator (fictional)", "avatar": "" },
+      "talking_points": [
+        "Periodic review compliance, KYC document coverage and pending documents frame the control gaps.",
+        "Review compliance against confirmed alerts by account shows where weak reviews and suspicious activity move together; it is an association, not proof of cause.",
+        "The action memo drafts three prioritised actions from the KPI, account, detection-rule and risk tables only."
+      ],
+      "show": ["Review compliance and KYC coverage", "Review compliance vs confirmed alerts", "Action memo"],
+      "call_out": "Grounded draft actions, with a human in the loop",
+      "transition": { "next_tab": "live", "line": "What happens when a suspicious trade lands right now?" }
+    },
+    {
+      "id": "live",
+      "persona": { "name": "Daniel Wong", "role": "Financial Crime Investigator (fictional)", "avatar": "" },
+      "talking_points": [
+        "Live trade events land in RAW.LIVE_TRADES, from the simulator or from Amazon Data Firehose through Snowpipe.",
+        "The Snowflake alert logs ALERT events with an SOP hint and the account's current risk band, then emails the investigator."
+      ],
+      "show": ["Events loaded and lag", "Latest trade events", "Alert log"],
+      "call_out": "From trade to case in one platform",
+      "transition": { "next_tab": "ask-ai", "line": "Now ask the data directly." }
+    },
+    {
+      "id": "ask-ai",
+      "persona": { "name": "Grace Lim", "role": "Chief Compliance Officer (fictional)", "avatar": "" },
+      "talking_points": [
+        "The Cortex Agent uses Cortex Analyst over the semantic view for metrics, and Cortex Search over 14 synthetic investigation SOPs.",
+        "Each answer shows the generated SQL and the SOPs it cited."
+      ],
+      "show": ["Ask a sample question", "Generated SQL", "SOP citations"],
+      "call_out": "Natural-language answers you can audit",
+      "transition": { "next_tab": "architecture", "line": "Here is how it is built." }
+    },
+    {
+      "id": "architecture",
+      "persona": { "name": "Grace Lim", "role": "Chief Compliance Officer (fictional)", "avatar": "" },
+      "talking_points": [
+        "Two builds share one core: Snowflake only, or AWS + Snowflake (Data Firehose, Bedrock, QuickSight and Amazon Q).",
+        "Everything shown is synthetic demo data, rebuilt reproducibly from the repo."
+      ],
+      "show": ["Both architecture diagrams"],
+      "call_out": "One governed core, with an optional AWS edge",
+      "transition": { "next_tab": "", "line": "Questions?" }
+    }
+  ]
+}
